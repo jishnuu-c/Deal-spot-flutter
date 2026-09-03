@@ -6,6 +6,7 @@ import 'product_image.dart';
 class Product extends Equatable {
   final int id;
   final int categoryId;
+  final int? brandId;
   final String brand;
   final String brandAr;
   final String sku;
@@ -27,6 +28,7 @@ class Product extends Equatable {
   const Product({
     required this.id,
     required this.categoryId,
+    this.brandId,
     required this.brand,
     required this.brandAr,
     required this.sku,
@@ -47,6 +49,7 @@ class Product extends Equatable {
   Product copyWith({
     int? id,
     int? categoryId,
+    int? brandId,
     String? brand,
     String? brandAr,
     String? sku,
@@ -66,6 +69,7 @@ class Product extends Equatable {
     return Product(
       id: id ?? this.id,
       categoryId: categoryId ?? this.categoryId,
+      brandId: brandId ?? this.brandId,
       brand: brand ?? this.brand,
       brandAr: brandAr ?? this.brandAr,
       sku: sku ?? this.sku,
@@ -89,10 +93,15 @@ class Product extends Equatable {
         ? ((json['active'] as bool) ? 1 : 0)
         : (json['is_active'] as num?)?.toInt() ?? (json['isActive'] as num?)?.toInt() ?? 1;
 
+    final brandIdVal = (json['brandId'] as num?)?.toInt() ??
+        (json['brand_id'] as num?)?.toInt() ??
+        (json['brand'] is Map ? (json['brand']['id'] as num?)?.toInt() : null);
+
     return Product(
       id: (json['id'] as num?)?.toInt() ?? 0,
       categoryId: (json['categoryId'] as num?)?.toInt() ?? (json['category_id'] as num?)?.toInt() ?? 1,
-      brand: json['brand'] as String? ?? json['brandNameEn'] as String? ?? '',
+      brandId: brandIdVal,
+      brand: json['brand'] is String ? (json['brand'] as String) : (json['brandNameEn'] as String? ?? ''),
       brandAr: json['brandAr'] as String? ?? json['brand_ar'] as String? ?? json['brandNameAr'] as String? ?? '',
       sku: json['sku'] as String? ?? '',
       barcode: json['barcode'] as String? ?? '',
@@ -118,6 +127,7 @@ class Product extends Equatable {
     return {
       'id': id,
       'category_id': categoryId,
+      'brand_id': brandId,
       'brand': brand,
       'brand_ar': brandAr,
       'sku': sku,
@@ -140,6 +150,7 @@ class Product extends Equatable {
   List<Object?> get props => [
         id,
         categoryId,
+        brandId,
         brand,
         brandAr,
         sku,

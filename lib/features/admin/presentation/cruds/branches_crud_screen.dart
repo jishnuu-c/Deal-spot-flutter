@@ -1248,7 +1248,7 @@ class _BranchesCrudScreenState extends ConsumerState<BranchesCrudScreen> {
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
                           ),
@@ -1270,32 +1270,68 @@ class _BranchesCrudScreenState extends ConsumerState<BranchesCrudScreen> {
                                           color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155),
                                         ),
                                       ),
-                                      const SizedBox(height: 4),
+                                      const SizedBox(height: 5),
                                       TextField(
                                         controller: openCtrl,
-                                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: isDark ? Colors.white : const Color(0xFF0F172A)),
+                                        style: TextStyle(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                        ),
                                         decoration: InputDecoration(
                                           prefixIcon: const Icon(Icons.alarm, size: 16, color: Color(0xFF16A34A)),
                                           hintText: '08:00:00',
                                           filled: true,
                                           fillColor: isDark ? const Color(0xFF1E293B) : Colors.white,
                                           contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1))),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(8),
+                                            borderSide: BorderSide(
+                                              color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                                            ),
+                                          ),
+                                          enabledBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(8),
+                                            borderSide: BorderSide(
+                                              color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                                            ),
+                                          ),
+                                          focusedBorder: const OutlineInputBorder(
+                                            borderRadius: BorderRadius.all(Radius.circular(8)),
+                                            borderSide: BorderSide(color: Color(0xFF16A34A), width: 1.5),
+                                          ),
                                         ),
+                                        onChanged: (_) => setModalState(() {}),
                                       ),
-                                      const SizedBox(height: 4),
+                                      const SizedBox(height: 6),
                                       Wrap(
-                                        spacing: 4,
+                                        spacing: 5,
+                                        runSpacing: 4,
                                         children: [
-                                          _buildPresetChip('08:00 AM', () => setModalState(() => openCtrl.text = '08:00:00'), isDark),
-                                          _buildPresetChip('09:00 AM', () => setModalState(() => openCtrl.text = '09:00:00'), isDark),
-                                          _buildPresetChip('10:00 AM', () => setModalState(() => openCtrl.text = '10:00:00'), isDark),
+                                          _buildPresetChip(
+                                            '08:00 AM',
+                                            () => setModalState(() => openCtrl.text = '08:00:00'),
+                                            openCtrl.text.startsWith('08:00'),
+                                            isDark,
+                                          ),
+                                          _buildPresetChip(
+                                            '09:00 AM',
+                                            () => setModalState(() => openCtrl.text = '09:00:00'),
+                                            openCtrl.text.startsWith('09:00'),
+                                            isDark,
+                                          ),
+                                          _buildPresetChip(
+                                            '10:00 AM',
+                                            () => setModalState(() => openCtrl.text = '10:00:00'),
+                                            openCtrl.text.startsWith('10:00'),
+                                            isDark,
+                                          ),
                                         ],
                                       ),
                                     ],
                                   ),
                                 ),
-                                const SizedBox(width: 10),
+                                const SizedBox(width: 12),
 
                                 // Closing Time
                                 Expanded(
@@ -1310,26 +1346,62 @@ class _BranchesCrudScreenState extends ConsumerState<BranchesCrudScreen> {
                                           color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155),
                                         ),
                                       ),
-                                      const SizedBox(height: 4),
+                                      const SizedBox(height: 5),
                                       TextField(
                                         controller: closeCtrl,
-                                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: isDark ? Colors.white : const Color(0xFF0F172A)),
+                                        style: TextStyle(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                        ),
                                         decoration: InputDecoration(
                                           prefixIcon: const Icon(Icons.bedtime, size: 16, color: Color(0xFF16A34A)),
                                           hintText: '23:00:00',
                                           filled: true,
                                           fillColor: isDark ? const Color(0xFF1E293B) : Colors.white,
                                           contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1))),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(8),
+                                            borderSide: BorderSide(
+                                              color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                                            ),
+                                          ),
+                                          enabledBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(8),
+                                            borderSide: BorderSide(
+                                              color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                                            ),
+                                          ),
+                                          focusedBorder: const OutlineInputBorder(
+                                            borderRadius: BorderRadius.all(Radius.circular(8)),
+                                            borderSide: BorderSide(color: Color(0xFF16A34A), width: 1.5),
+                                          ),
                                         ),
+                                        onChanged: (_) => setModalState(() {}),
                                       ),
-                                      const SizedBox(height: 4),
+                                      const SizedBox(height: 6),
                                       Wrap(
-                                        spacing: 4,
+                                        spacing: 5,
+                                        runSpacing: 4,
                                         children: [
-                                          _buildPresetChip('10:00 PM', () => setModalState(() => closeCtrl.text = '22:00:00'), isDark),
-                                          _buildPresetChip('11:00 PM', () => setModalState(() => closeCtrl.text = '23:00:00'), isDark),
-                                          _buildPresetChip('12:00 AM', () => setModalState(() => closeCtrl.text = '00:00:00'), isDark),
+                                          _buildPresetChip(
+                                            '10:00 PM',
+                                            () => setModalState(() => closeCtrl.text = '22:00:00'),
+                                            closeCtrl.text.startsWith('22:00'),
+                                            isDark,
+                                          ),
+                                          _buildPresetChip(
+                                            '11:00 PM',
+                                            () => setModalState(() => closeCtrl.text = '23:00:00'),
+                                            closeCtrl.text.startsWith('23:00'),
+                                            isDark,
+                                          ),
+                                          _buildPresetChip(
+                                            '12:00 AM',
+                                            () => setModalState(() => closeCtrl.text = '00:00:00'),
+                                            closeCtrl.text.startsWith('00:00') || closeCtrl.text.startsWith('23:59'),
+                                            isDark,
+                                          ),
                                         ],
                                       ),
                                     ],
@@ -1344,142 +1416,73 @@ class _BranchesCrudScreenState extends ConsumerState<BranchesCrudScreen> {
                     ],
 
                     // SECTION 4: Switches & Status (Toggle Cards matching Angular .toggles-box)
-                    Row(
-                      children: [
-                        // Toggle Card 1: 24/7 Switch
-                        Expanded(
-                          child: InkWell(
-                            onTap: () {
-                              setModalState(() {
-                                is247 = !is247;
-                                if (is247) {
-                                  openCtrl.text = '00:00:00';
-                                  closeCtrl.text = '23:59:59';
-                                } else {
-                                  openCtrl.text = '08:00:00';
-                                  closeCtrl.text = '23:00:00';
-                                }
-                              });
-                            },
-                            borderRadius: BorderRadius.circular(10),
-                            child: Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: is247
-                                      ? const Color(0xFF16A34A)
-                                      : (isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
-                                  width: is247 ? 1.5 : 1,
-                                ),
-                              ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Checkbox(
-                                    value: is247,
-                                    activeColor: const Color(0xFF16A34A),
-                                    onChanged: (val) {
-                                      setModalState(() {
-                                        is247 = val ?? false;
-                                        if (is247) {
-                                          openCtrl.text = '00:00:00';
-                                          closeCtrl.text = '23:59:59';
-                                        } else {
-                                          openCtrl.text = '08:00:00';
-                                          closeCtrl.text = '23:00:00';
-                                        }
-                                      });
-                                    },
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          isRtl ? 'مفتوح 24/7 (على مدار الساعة)' : 'Open 24 Hours (24/7)',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w700,
-                                            color: isDark ? Colors.white : const Color(0xFF0F172A),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          isRtl ? 'يعمل الفرع طوال اليوم دون إغلاق' : 'Operates non-stop all day',
-                                          style: TextStyle(
-                                            fontSize: 9.5,
-                                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
+                    if (isMobile) ...[
+                      _buildToggleCard(
+                        title: isRtl ? 'مفتوح 24/7 (على مدار الساعة)' : 'Open 24 Hours (24/7)',
+                        subtitle: isRtl ? 'يعمل الفرع طوال اليوم دون إغلاق' : 'Operates non-stop all day',
+                        isSelected: is247,
+                        onTap: () {
+                          setModalState(() {
+                            is247 = !is247;
+                            if (is247) {
+                              openCtrl.text = '00:00:00';
+                              closeCtrl.text = '23:59:59';
+                            } else {
+                              openCtrl.text = '08:00:00';
+                              closeCtrl.text = '23:00:00';
+                            }
+                          });
+                        },
+                        isDark: isDark,
+                        isRtl: isRtl,
+                      ),
+                      const SizedBox(height: 10),
+                      _buildToggleCard(
+                        title: isRtl ? 'فرع نشط ومتاح للعامة' : 'Branch Active & Published',
+                        subtitle: isRtl ? 'يظهر الفرع في قائمة الفروع للمستخدمين' : 'Displayed on website and app',
+                        isSelected: isActive,
+                        onTap: () => setModalState(() => isActive = !isActive),
+                        isDark: isDark,
+                        isRtl: isRtl,
+                      ),
+                    ] else ...[
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildToggleCard(
+                              title: isRtl ? 'مفتوح 24/7 (على مدار الساعة)' : 'Open 24 Hours (24/7)',
+                              subtitle: isRtl ? 'يعمل الفرع طوال اليوم دون إغلاق' : 'Operates non-stop all day',
+                              isSelected: is247,
+                              onTap: () {
+                                setModalState(() {
+                                  is247 = !is247;
+                                  if (is247) {
+                                    openCtrl.text = '00:00:00';
+                                    closeCtrl.text = '23:59:59';
+                                  } else {
+                                    openCtrl.text = '08:00:00';
+                                    closeCtrl.text = '23:00:00';
+                                  }
+                                });
+                              },
+                              isDark: isDark,
+                              isRtl: isRtl,
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 10),
-
-                        // Toggle Card 2: Active Switch
-                        Expanded(
-                          child: InkWell(
-                            onTap: () => setModalState(() => isActive = !isActive),
-                            borderRadius: BorderRadius.circular(10),
-                            child: Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: isActive
-                                      ? const Color(0xFF16A34A)
-                                      : (isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
-                                  width: isActive ? 1.5 : 1,
-                                ),
-                              ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Checkbox(
-                                    value: isActive,
-                                    activeColor: const Color(0xFF16A34A),
-                                    onChanged: (val) => setModalState(() => isActive = val ?? false),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          isRtl ? 'فرع نشط ومتاح للعامة' : 'Branch Active & Published',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w700,
-                                            color: isDark ? Colors.white : const Color(0xFF0F172A),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          isRtl ? 'يظهر الفرع في قائمة الفروع للمستخدمين' : 'Displayed on website and app',
-                                          style: TextStyle(
-                                            fontSize: 9.5,
-                                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildToggleCard(
+                              title: isRtl ? 'فرع نشط ومتاح للعامة' : 'Branch Active & Published',
+                              subtitle: isRtl ? 'يظهر الفرع في قائمة الفروع للمستخدمين' : 'Displayed on website and app',
+                              isSelected: isActive,
+                              onTap: () => setModalState(() => isActive = !isActive),
+                              isDark: isDark,
+                              isRtl: isRtl,
                             ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -1726,57 +1729,134 @@ class _BranchesCrudScreenState extends ConsumerState<BranchesCrudScreen> {
     );
   }
 
-  // Preset Time Chip
-  Widget _buildPresetChip(String label, VoidCallback onTap, bool isDark) {
+  // Preset Time Chip with Active Highlight
+  Widget _buildPresetChip(String label, VoidCallback onTap, bool isSelected, bool isDark) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(4),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      borderRadius: BorderRadius.circular(6),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E293B) : Colors.white,
-          borderRadius: BorderRadius.circular(4),
+          color: isSelected
+              ? const Color(0xFF16A34A)
+              : (isDark ? const Color(0xFF1E293B) : Colors.white),
+          borderRadius: BorderRadius.circular(6),
           border: Border.all(
-            color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+            color: isSelected
+                ? const Color(0xFF16A34A)
+                : (isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
+            width: isSelected ? 1.5 : 1,
           ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF16A34A).withValues(alpha: 0.2),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ]
+              : null,
         ),
         child: Text(
           label,
           style: TextStyle(
-            fontSize: 9.5,
+            fontSize: 10,
             fontWeight: FontWeight.w700,
-            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+            color: isSelected
+                ? Colors.white
+                : (isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569)),
           ),
         ),
       ),
     );
   }
 
-  // Preset Location Chip
-  Widget _buildPresetLocationChip(String label, VoidCallback onTap, bool isDark) {
+  // Toggle Card Widget matching Angular .toggle-card & user screenshot
+  Widget _buildToggleCard({
+    required String title,
+    required String subtitle,
+    required bool isSelected,
+    required VoidCallback onTap,
+    required bool isDark,
+    required bool isRtl,
+  }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(4),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      borderRadius: BorderRadius.circular(12),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E293B) : Colors.white,
-          borderRadius: BorderRadius.circular(4),
+          color: isSelected
+              ? (isDark ? const Color(0xFF064E3B).withValues(alpha: 0.35) : const Color(0xFFF0FDF4))
+              : (isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC)),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+            color: isSelected
+                ? const Color(0xFF16A34A)
+                : (isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
+            width: isSelected ? 1.5 : 1,
           ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF16A34A).withValues(alpha: 0.12),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.my_location, size: 10, color: Color(0xFF16A34A)),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 9.5,
-                fontWeight: FontWeight.w600,
-                color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155),
+            // Custom Checkbox
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              width: 20,
+              height: 20,
+              margin: const EdgeInsets.only(top: 2),
+              decoration: BoxDecoration(
+                color: isSelected ? const Color(0xFF16A34A) : Colors.transparent,
+                borderRadius: BorderRadius.circular(5),
+                border: Border.all(
+                  color: isSelected
+                      ? const Color(0xFF16A34A)
+                      : (isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8)),
+                  width: 1.5,
+                ),
+              ),
+              alignment: Alignment.center,
+              child: isSelected
+                  ? const Icon(Icons.check, size: 14, color: Colors.white)
+                  : null,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      color: isSelected
+                          ? (isDark ? const Color(0xFF86EFAC) : const Color(0xFF14532D))
+                          : (isDark ? Colors.white : const Color(0xFF0F172A)),
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                      height: 1.3,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

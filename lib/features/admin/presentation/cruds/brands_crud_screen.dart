@@ -132,6 +132,7 @@ class _BrandsCrudScreenState extends ConsumerState<BrandsCrudScreen> {
     bool isActive = brand == null ? true : brand.active;
     bool isFeatured = brand?.featured ?? false;
     bool isCatDropdownOpen = false;
+    bool isSubmitting = false;
 
     XFile? pickedLogoFile;
     Uint8List? pickedLogoBytes;
@@ -155,21 +156,21 @@ class _BrandsCrudScreenState extends ConsumerState<BrandsCrudScreen> {
 
           return AlertDialog(
             backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-            titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            actionsPadding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
+            titlePadding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            actionsPadding: const EdgeInsets.fromLTRB(20, 12, 20, 18),
             title: Row(
               children: [
                 Container(
-                  width: 40,
-                  height: 40,
+                  width: 38,
+                  height: 38,
                   decoration: BoxDecoration(
                     color: const Color(0xFFDCFCE7),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                      color: const Color(0xFF16A34A).withValues(alpha: 0.3),
+                      color: const Color(0xFF16A34A).withValues(alpha: 0.2),
                     ),
                   ),
                   child: Icon(
@@ -214,13 +215,13 @@ class _BrandsCrudScreenState extends ConsumerState<BrandsCrudScreen> {
               ],
             ),
             content: SizedBox(
-              width: 540,
+              width: 560,
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Section 1: Brand Names
+                    // SECTION 1: Brand Names
                     _buildSectionHeader(Icons.badge_outlined, isRtl ? 'أسماء العلامة التجارية' : 'Brand Names', isDark),
                     const SizedBox(height: 8),
                     Row(
@@ -250,7 +251,7 @@ class _BrandsCrudScreenState extends ConsumerState<BrandsCrudScreen> {
                     ),
                     const SizedBox(height: 14),
 
-                    // Section 2: Website
+                    // SECTION 2: Official Website
                     _buildSectionHeader(Icons.language, isRtl ? 'الموقع الرسمي' : 'Official Website', isDark),
                     const SizedBox(height: 8),
                     _buildFieldLabel(isRtl ? 'رابط الموقع الإلكتروني' : 'Website URL', isDark),
@@ -273,14 +274,17 @@ class _BrandsCrudScreenState extends ConsumerState<BrandsCrudScreen> {
                     ),
                     const SizedBox(height: 14),
 
-                    // Section 3: Assigned Categories Multi-Select
+                    // SECTION 3: Assigned Categories Multi-Select
                     _buildSectionHeader(Icons.category_outlined, isRtl ? 'التصنيفات المرتبطة' : 'Assigned Categories', isDark),
                     const SizedBox(height: 6),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _buildFieldLabel(isRtl ? 'اختر التصنيفات' : 'Select Categories', isDark),
+                        Expanded(
+                          child: _buildFieldLabel(isRtl ? 'اختر التصنيفات' : 'Select Categories', isDark),
+                        ),
                         Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             InkWell(
                               onTap: () {
@@ -324,6 +328,7 @@ class _BrandsCrudScreenState extends ConsumerState<BrandsCrudScreen> {
                           // Chips display row
                           InkWell(
                             onTap: () => setModalState(() => isCatDropdownOpen = !isCatDropdownOpen),
+                            borderRadius: BorderRadius.circular(8),
                             child: Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                               child: Row(
@@ -465,7 +470,7 @@ class _BrandsCrudScreenState extends ConsumerState<BrandsCrudScreen> {
                     ),
                     const SizedBox(height: 14),
 
-                    // Section 4: Brand Descriptions
+                    // SECTION 4: Brand Descriptions
                     _buildSectionHeader(Icons.description_outlined, isRtl ? 'وصف العلامة التجارية' : 'Brand Description', isDark),
                     const SizedBox(height: 8),
                     Row(
@@ -478,7 +483,7 @@ class _BrandsCrudScreenState extends ConsumerState<BrandsCrudScreen> {
                               const SizedBox(height: 4),
                               TextField(
                                 controller: descEnCtrl,
-                                maxLines: 2,
+                                maxLines: 3,
                                 style: TextStyle(fontSize: 12, color: isDark ? Colors.white : const Color(0xFF0F172A)),
                                 decoration: InputDecoration(
                                   hintText: 'Short description about the brand in English...',
@@ -503,7 +508,7 @@ class _BrandsCrudScreenState extends ConsumerState<BrandsCrudScreen> {
                               const SizedBox(height: 4),
                               TextField(
                                 controller: descArCtrl,
-                                maxLines: 2,
+                                maxLines: 3,
                                 textDirection: TextDirection.rtl,
                                 style: TextStyle(fontSize: 12, color: isDark ? Colors.white : const Color(0xFF0F172A)),
                                 decoration: InputDecoration(
@@ -524,181 +529,157 @@ class _BrandsCrudScreenState extends ConsumerState<BrandsCrudScreen> {
                     ),
                     const SizedBox(height: 14),
 
-                    // Section 5: Brand Logo
+                    // SECTION 5: Brand Logo (Matching Angular file-upload-box & logo-preview-container)
                     _buildSectionHeader(Icons.image_outlined, isRtl ? 'شعار الماركة' : 'Brand Logo', isDark),
                     const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: InkWell(
-                            onTap: () async {
-                              try {
-                                final file = await _picker.pickImage(source: ImageSource.gallery);
-                                if (file != null) {
-                                  final bytes = await file.readAsBytes();
-                                  setModalState(() {
-                                    pickedLogoFile = file;
-                                    pickedLogoBytes = bytes;
-                                  });
-                                }
-                              } catch (_) {}
-                            },
-                            borderRadius: BorderRadius.circular(8),
-                            child: Container(
-                              height: 38,
-                              padding: const EdgeInsets.symmetric(horizontal: 10),
-                              decoration: BoxDecoration(
-                                color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
+                    InkWell(
+                      onTap: () async {
+                        try {
+                          final file = await _picker.pickImage(source: ImageSource.gallery);
+                          if (file != null) {
+                            final bytes = await file.readAsBytes();
+                            setModalState(() {
+                              pickedLogoFile = file;
+                              pickedLogoBytes = bytes;
+                            });
+                          }
+                        } catch (_) {}
+                      },
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                            style: BorderStyle.solid,
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            const Icon(Icons.cloud_upload_outlined, size: 24, color: Color(0xFF16A34A)),
+                            const SizedBox(height: 4),
+                            Text(
+                              isRtl ? 'اختر ملف أو صورة الشعار' : 'Choose Logo File / Image',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: isDark ? Colors.white : const Color(0xFF0F172A),
                               ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              isRtl ? 'الصيغ المدعومة: JPG, PNG, WEBP' : 'Supported: JPG, PNG, WEBP',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // Logo Preview Container
+                    if (pickedLogoBytes != null || existingLogoUrl.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: const Color(0xFFCBD5E1)),
+                              ),
+                              clipBehavior: Clip.antiAlias,
+                              padding: const EdgeInsets.all(3),
+                              child: pickedLogoBytes != null
+                                  ? Image.memory(pickedLogoBytes!, fit: BoxFit.contain)
+                                  : CachedNetworkImage(
+                                      imageUrl: existingLogoUrl,
+                                      fit: BoxFit.contain,
+                                      errorWidget: (_, __, ___) => const Icon(Icons.broken_image, size: 18),
+                                    ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Icon(Icons.cloud_upload_outlined, size: 16, color: Color(0xFF16A34A)),
-                                  const SizedBox(width: 6),
-                                  Flexible(
-                                    child: Text(
-                                      pickedLogoFile != null
-                                          ? (isRtl ? 'تم اختيار الشعار' : 'Logo Selected')
-                                          : (isRtl ? 'اختر الشعار' : 'Choose Logo'),
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: 11.5,
-                                        fontWeight: FontWeight.w600,
-                                        color: isDark ? Colors.white : const Color(0xFF0F172A),
-                                      ),
+                                  Text(
+                                    isRtl ? 'معاينة الشعار' : 'Logo Preview',
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 1),
+                                  Text(
+                                    pickedLogoFile != null
+                                        ? pickedLogoFile!.name
+                                        : (isRtl ? 'الشعار الحالي للعلامة التجارية' : 'Current Brand Logo'),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                          ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, size: 18, color: Color(0xFFDC2626)),
+                              onPressed: () {
+                                setModalState(() {
+                                  pickedLogoFile = null;
+                                  pickedLogoBytes = null;
+                                  existingLogoUrl = '';
+                                });
+                              },
+                            ),
+                          ],
                         ),
-                        if (pickedLogoBytes != null || existingLogoUrl.isNotEmpty) ...[
-                          const SizedBox(width: 8),
-                          Stack(
-                            children: [
-                              Container(
-                                width: 38,
-                                height: 38,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: const Color(0xFF16A34A)),
-                                ),
-                                clipBehavior: Clip.antiAlias,
-                                child: pickedLogoBytes != null
-                                    ? Image.memory(pickedLogoBytes!, fit: BoxFit.cover)
-                                    : CachedNetworkImage(
-                                        imageUrl: existingLogoUrl,
-                                        fit: BoxFit.cover,
-                                        errorWidget: (_, __, ___) => const Icon(Icons.broken_image, size: 18),
-                                      ),
-                              ),
-                              if (pickedLogoFile != null)
-                                Positioned(
-                                  top: -2,
-                                  right: -2,
-                                  child: InkWell(
-                                    onTap: () {
-                                      setModalState(() {
-                                        pickedLogoFile = null;
-                                        pickedLogoBytes = null;
-                                      });
-                                    },
-                                    child: Container(
-                                      padding: const EdgeInsets.all(1),
-                                      decoration: const BoxDecoration(
-                                        color: Color(0xFFDC2626),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(Icons.close, size: 10, color: Colors.white),
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ],
-                      ],
-                    ),
+                      ),
+                    ],
                     const SizedBox(height: 14),
 
-                    // Section 6: Status & Featured
+                    // SECTION 6: Status & Featured (Toggle Cards matching Angular)
                     _buildSectionHeader(Icons.tune, isRtl ? 'الحالة والتمييز' : 'Status & Featured', isDark),
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        // Active Switch
                         Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
-                            ),
-                            child: Row(
-                              children: [
-                                Switch(
-                                  value: isActive,
-                                  activeColor: const Color(0xFF16A34A),
-                                  onChanged: (val) => setModalState(() => isActive = val),
-                                ),
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        isRtl ? 'شريك نشط' : 'Active Partner',
-                                        style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: isDark ? Colors.white : const Color(0xFF0F172A)),
-                                      ),
-                                      Text(
-                                        isRtl ? 'إظهار في الكتالوج' : 'Show in catalogue',
-                                        style: TextStyle(fontSize: 9.5, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
+                          child: _buildToggleCard(
+                            title: isRtl ? 'شريك نشط' : 'Active Partner',
+                            subtitle: isRtl ? 'إظهار في الكتالوج' : 'Show in catalogue',
+                            isSelected: isActive,
+                            onTap: () => setModalState(() => isActive = !isActive),
+                            isDark: isDark,
+                            isRtl: isRtl,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        // Featured Switch
+                        const SizedBox(width: 10),
                         Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
-                            ),
-                            child: Row(
-                              children: [
-                                Switch(
-                                  value: isFeatured,
-                                  activeColor: const Color(0xFFF59E0B),
-                                  onChanged: (val) => setModalState(() => isFeatured = val),
-                                ),
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        isRtl ? 'علامة مميزة' : 'Featured Brand',
-                                        style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: isDark ? Colors.white : const Color(0xFF0F172A)),
-                                      ),
-                                      Text(
-                                        isRtl ? 'إبراز في الرئيسية' : 'Highlight on Home',
-                                        style: TextStyle(fontSize: 9.5, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
+                          child: _buildToggleCard(
+                            title: isRtl ? 'علامة مميزة' : 'Featured Brand',
+                            subtitle: isRtl ? 'إبراز في الرئيسية' : 'Highlight on Home',
+                            isSelected: isFeatured,
+                            onTap: () => setModalState(() => isFeatured = !isFeatured),
+                            isDark: isDark,
+                            isRtl: isRtl,
                           ),
                         ),
                       ],
@@ -713,6 +694,7 @@ class _BrandsCrudScreenState extends ConsumerState<BrandsCrudScreen> {
                   foregroundColor: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                   side: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 ),
                 onPressed: () => Navigator.pop(ctx),
                 child: Text(isRtl ? 'إلغاء' : 'Cancel'),
@@ -721,86 +703,190 @@ class _BrandsCrudScreenState extends ConsumerState<BrandsCrudScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF16A34A),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   elevation: 0,
                 ),
-                icon: const Icon(Icons.save, size: 16),
+                icon: isSubmitting
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.save, size: 16),
                 label: Text(
                   isEditing
                       ? (isRtl ? 'حفظ التعديلات' : 'Save Changes')
                       : (isRtl ? 'إنشاء الماركة' : 'Create Brand'),
                   style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5),
                 ),
-                onPressed: () async {
-                  final nameEn = nameEnCtrl.text.trim();
-                  final nameAr = nameArCtrl.text.trim();
+                onPressed: isSubmitting
+                    ? null
+                    : () async {
+                        final nameEn = nameEnCtrl.text.trim();
+                        final nameAr = nameArCtrl.text.trim();
 
-                  if (nameEn.isEmpty || nameAr.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          isRtl ? 'يرجى إدخال اسم الماركة بالإنجليزية والعربية' : 'Please fill in English and Arabic brand names.',
-                        ),
-                        backgroundColor: const Color(0xFFDC2626),
-                      ),
-                    );
-                    return;
-                  }
+                        if (nameEn.isEmpty || nameAr.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                isRtl ? 'يرجى إدخال اسم الماركة بالإنجليزية والعربية' : 'Please fill in English and Arabic brand names.',
+                              ),
+                              backgroundColor: const Color(0xFFDC2626),
+                            ),
+                          );
+                          return;
+                        }
 
-                  Navigator.pop(ctx);
-                  if (isEditing) {
-                    final success = await ref.read(brandRepositoryProvider.notifier).updateBrand(
-                          id: brand.id,
-                          nameEn: nameEn,
-                          nameAr: nameAr,
-                          descriptionEn: descEnCtrl.text.trim().isNotEmpty ? descEnCtrl.text.trim() : null,
-                          descriptionAr: descArCtrl.text.trim().isNotEmpty ? descArCtrl.text.trim() : null,
-                          websiteUrl: websiteCtrl.text.trim().isNotEmpty ? websiteCtrl.text.trim() : null,
-                          featured: isFeatured,
-                          active: isActive,
-                          categoryIds: selectedCategoryIds,
-                          categoryObjects: selectedCategoryObjects,
-                          logoFile: pickedLogoFile,
-                          currentLogoUrl: brand.logoUrl,
-                        );
-                    if (mounted && success) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(isRtl ? 'تم تحديث العلامة التجارية بنجاح.' : 'Brand updated successfully.'),
-                          backgroundColor: const Color(0xFF16A34A),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    }
-                  } else {
-                    final success = await ref.read(brandRepositoryProvider.notifier).createBrand(
-                          nameEn: nameEn,
-                          nameAr: nameAr,
-                          descriptionEn: descEnCtrl.text.trim().isNotEmpty ? descEnCtrl.text.trim() : null,
-                          descriptionAr: descArCtrl.text.trim().isNotEmpty ? descArCtrl.text.trim() : null,
-                          websiteUrl: websiteCtrl.text.trim().isNotEmpty ? websiteCtrl.text.trim() : null,
-                          featured: isFeatured,
-                          active: isActive,
-                          categoryIds: selectedCategoryIds,
-                          categoryObjects: selectedCategoryObjects,
-                          logoFile: pickedLogoFile,
-                        );
-                    if (mounted && success) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(isRtl ? 'تمت إضافة العلامة التجارية بنجاح.' : 'Brand added successfully.'),
-                          backgroundColor: const Color(0xFF16A34A),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    }
-                  }
-                },
+                        setModalState(() => isSubmitting = true);
+
+                        final descEn = descEnCtrl.text.trim().isEmpty ? null : descEnCtrl.text.trim();
+                        final descAr = descArCtrl.text.trim().isEmpty ? null : descArCtrl.text.trim();
+                        final website = websiteCtrl.text.trim().isEmpty ? null : websiteCtrl.text.trim();
+
+                        bool ok = false;
+                        if (isEditing) {
+                          ok = await ref.read(brandRepositoryProvider.notifier).updateBrand(
+                                id: brand.id,
+                                nameEn: nameEn,
+                                nameAr: nameAr,
+                                descriptionEn: descEn,
+                                descriptionAr: descAr,
+                                websiteUrl: website,
+                                featured: isFeatured,
+                                active: isActive,
+                                categoryIds: selectedCategoryIds,
+                                categoryObjects: selectedCategoryObjects,
+                                logoFile: pickedLogoFile,
+                                currentLogoUrl: existingLogoUrl,
+                              );
+                        } else {
+                          ok = await ref.read(brandRepositoryProvider.notifier).createBrand(
+                                nameEn: nameEn,
+                                nameAr: nameAr,
+                                descriptionEn: descEn,
+                                descriptionAr: descAr,
+                                websiteUrl: website,
+                                featured: isFeatured,
+                                active: isActive,
+                                categoryIds: selectedCategoryIds,
+                                categoryObjects: selectedCategoryObjects,
+                                logoFile: pickedLogoFile,
+                              );
+                        }
+
+                        if (ctx.mounted) {
+                          Navigator.pop(ctx);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                isEditing
+                                    ? (isRtl ? 'تم حفظ تعديلات العلامة التجارية بنجاح' : 'Brand updated successfully')
+                                    : (isRtl ? 'تم إنشاء العلامة التجارية بنجاح' : 'Brand created successfully'),
+                              ),
+                              backgroundColor: const Color(0xFF16A34A),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      },
               ),
             ],
           );
         },
+      ),
+    );
+  }
+
+  // Toggle Card Widget matching Angular .status-row / .toggle-card & BranchesCrud
+  Widget _buildToggleCard({
+    required String title,
+    required String subtitle,
+    required bool isSelected,
+    required VoidCallback onTap,
+    required bool isDark,
+    required bool isRtl,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? (isDark ? const Color(0xFF064E3B).withValues(alpha: 0.35) : const Color(0xFFF0FDF4))
+              : (isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC)),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected
+                ? const Color(0xFF16A34A)
+                : (isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
+            width: isSelected ? 1.5 : 1,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF16A34A).withValues(alpha: 0.12),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Custom Square Checkbox
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              width: 20,
+              height: 20,
+              margin: const EdgeInsets.only(top: 2),
+              decoration: BoxDecoration(
+                color: isSelected ? const Color(0xFF16A34A) : Colors.transparent,
+                borderRadius: BorderRadius.circular(5),
+                border: Border.all(
+                  color: isSelected
+                      ? const Color(0xFF16A34A)
+                      : (isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8)),
+                  width: 1.5,
+                ),
+              ),
+              alignment: Alignment.center,
+              child: isSelected
+                  ? const Icon(Icons.check, size: 14, color: Colors.white)
+                  : null,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: isSelected
+                          ? (isDark ? const Color(0xFF86EFAC) : const Color(0xFF14532D))
+                          : (isDark ? Colors.white : const Color(0xFF0F172A)),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                      height: 1.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

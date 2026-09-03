@@ -1,7 +1,26 @@
+import 'dart:convert';
+import 'dart:typed_data';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http_parser/http_parser.dart';
+import 'package:image_picker/image_picker.dart' hide Category;
 import '../../models/models.dart';
 import 'api_client.dart';
 import 'category_repository.dart';
+
+class PagedProductResult {
+  final List<Product> content;
+  final int totalElements;
+  final int totalPages;
+  final int number;
+
+  const PagedProductResult({
+    required this.content,
+    required this.totalElements,
+    required this.totalPages,
+    required this.number,
+  });
+}
 
 class ProductState {
   final List<Product> products;
@@ -50,15 +69,133 @@ class ProductNotifier extends StateNotifier<ProductState> {
     try {
       final response = await _apiClient.get('/products/fetch-all-products');
       if (response.statusCode == 200 && response.data != null) {
-        final rawList = response.data as List;
-        final list = rawList.map((e) => Product.fromJson(e as Map<String, dynamic>)).toList();
-        if (list.isNotEmpty) {
+        if (response.data is List) {
+          final rawList = response.data as List;
+          final list = rawList.map((e) => Product.fromJson(e as Map<String, dynamic>)).toList();
+          if (list.isNotEmpty) {
+            state = state.copyWith(products: list, isLoading: false);
+            return;
+          }
+        } else if (response.data is Map && (response.data as Map).containsKey('content')) {
+          final rawList = (response.data as Map)['content'] as List;
+          final list = rawList.map((e) => Product.fromJson(e as Map<String, dynamic>)).toList();
           state = state.copyWith(products: list, isLoading: false);
           return;
         }
       }
     } catch (_) {}
+
+    // If fetch-all-products fails, try getting first page from /products/paged
+    try {
+      final pagedRes = await getPagedProducts(page: 0, size: 50);
+      if (pagedRes.content.isNotEmpty) {
+        state = state.copyWith(products: pagedRes.content, isLoading: false);
+        return;
+      }
+    } catch (_) {}
+
     state = state.copyWith(isLoading: false);
+  }
+
+  Future<PagedProductResult> getPagedProducts({
+    int page = 0,
+    int size = 20,
+    String? search,
+    int? categoryId,
+    int? brandId,
+    String sortBy = 'createdAt',
+    String direction = 'desc',
+  }) async {
+    final queryParams = <String, dynamic>{
+      'page': page,
+      'size': size,
+      'sortBy': sortBy,
+      'direction': direction,
+    };
+    if (search != null && search.trim().isNotEmpty) {
+      queryParams['search'] = search.trim();
+    }
+    if (categoryId != null) {
+      queryParams['categoryId'] = categoryId;
+    }
+    if (brandId != null) {
+      queryParams['brandId'] = brandId;
+    }
+
+    try {
+      final response = await _apiClient.get(
+        '/products/paged',
+        queryParameters: queryParams,
+      );
+      if (response.statusCode == 200 && response.data != null) {
+        if (response.data is Map) {
+          final map = response.data as Map<String, dynamic>;
+          final rawList = (map['content'] as List?) ?? [];
+          final list = rawList.map((e) => Product.fromJson(e as Map<String, dynamic>)).toList();
+          final totalElements = (map['totalElements'] as num?)?.toInt() ?? list.length;
+          final totalPages = (map['totalPages'] as num?)?.toInt() ?? 1;
+          final number = (map['number'] as num?)?.toInt() ?? page;
+
+          // Merge loaded products into state
+          final existingIds = state.products.map((p) => p.id).toSet();
+          final newProducts = list.where((p) => !existingIds.contains(p.id)).toList();
+          if (newProducts.isNotEmpty) {
+            state = state.copyWith(products: [...state.products, ...newProducts]);
+          }
+
+          return PagedProductResult(
+            content: list,
+            totalElements: totalElements,
+            totalPages: totalPages,
+            number: number,
+          );
+        } else if (response.data is List) {
+          final rawList = response.data as List;
+          final list = rawList.map((e) => Product.fromJson(e as Map<String, dynamic>)).toList();
+          return PagedProductResult(
+            content: list,
+            totalElements: list.length,
+            totalPages: 1,
+            number: 0,
+          );
+        }
+      }
+    } catch (e) {
+      // Fallback to local products filter if offline or error
+      final all = getProducts();
+      var filtered = all;
+      if (search != null && search.trim().isNotEmpty) {
+        final q = search.trim().toLowerCase();
+        filtered = filtered.where((p) =>
+            p.nameEn.toLowerCase().contains(q) ||
+            p.nameAr.toLowerCase().contains(q) ||
+            p.sku.toLowerCase().contains(q) ||
+            p.barcode.toLowerCase().contains(q) ||
+            p.brand.toLowerCase().contains(q)).toList();
+      }
+      if (categoryId != null) {
+        filtered = filtered.where((p) => p.categoryId == categoryId).toList();
+      }
+      if (brandId != null) {
+        filtered = filtered.where((p) => p.brandId == brandId).toList();
+      }
+      final start = page * size;
+      final pagedList = start < filtered.length ? filtered.skip(start).take(size).toList() : <Product>[];
+      final totalPages = (filtered.length / size).ceil();
+      return PagedProductResult(
+        content: pagedList,
+        totalElements: filtered.length,
+        totalPages: totalPages == 0 ? 1 : totalPages,
+        number: page,
+      );
+    }
+
+    return PagedProductResult(
+      content: [],
+      totalElements: 0,
+      totalPages: 0,
+      number: page,
+    );
   }
 
   List<Product> getProducts() {
@@ -116,78 +253,175 @@ class ProductNotifier extends StateNotifier<ProductState> {
   }
 
   // Admin CRUD - Products
-  Future<void> createProduct(String nameEn, String nameAr, String brand, String brandAr, String sku, String barcode, String primaryImage, String unit, double size, int categoryId, int isActive, String? descEn, String? descAr) async {
+  Future<bool> createProduct({
+    required String nameEn,
+    required String nameAr,
+    int? brandId,
+    required String brand,
+    required String brandAr,
+    String? sku,
+    String? barcode,
+    String? primaryImage,
+    required String unit,
+    required double size,
+    required int categoryId,
+    required int isActive,
+    String? descEn,
+    String? descAr,
+    XFile? imageFile,
+  }) async {
+    final payload = {
+      'nameEn': nameEn,
+      'nameAr': nameAr,
+      if (brandId != null) 'brandId': brandId,
+      'brand': brand,
+      'brandAr': brandAr,
+      'sku': sku ?? '',
+      'barcode': barcode ?? '',
+      'primaryImageUrl': primaryImage ?? '',
+      'unit': unit,
+      'unitSize': size,
+      'categoryId': categoryId,
+      'active': isActive == 1,
+      'descriptionEn': descEn ?? '',
+      'descriptionAr': descAr ?? '',
+    };
+
     try {
+      final formMap = <String, dynamic>{
+        'data': MultipartFile.fromString(
+          jsonEncode(payload),
+          contentType: MediaType.parse('application/json'),
+        ),
+      };
+
+      if (imageFile != null) {
+        final bytes = await imageFile.readAsBytes();
+        formMap['file'] = MultipartFile.fromBytes(bytes, filename: imageFile.name);
+      }
+
+      final formData = FormData.fromMap(formMap);
       final response = await _apiClient.post(
         '/products/add-product',
-        data: {
-          'data': {
-            'nameEn': nameEn,
-            'nameAr': nameAr,
-            'brand': brand,
-            'brandAr': brandAr,
-            'sku': sku,
-            'barcode': barcode,
-            'primaryImageUrl': primaryImage,
-            'unit': unit,
-            'unitSize': size,
-            'categoryId': categoryId,
-            'active': isActive == 1,
-            'descriptionEn': descEn,
-            'descriptionAr': descAr,
-          }
-        },
+        data: formData,
       );
-      if (response.statusCode == 200 && response.data != null) {
-        final created = Product.fromJson(response.data as Map<String, dynamic>);
-        state = state.copyWith(products: [...state.products, created]);
-        return;
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (response.data != null) {
+          final created = Product.fromJson(response.data as Map<String, dynamic>);
+          state = state.copyWith(products: [...state.products, created]);
+          return true;
+        }
       }
-    } catch (_) {}
+    } catch (_) {
+      try {
+        final response = await _apiClient.post(
+          '/products/add-product',
+          data: {'data': payload},
+        );
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          if (response.data != null) {
+            final created = Product.fromJson(response.data as Map<String, dynamic>);
+            state = state.copyWith(products: [...state.products, created]);
+            return true;
+          }
+        }
+      } catch (_) {}
+    }
 
     final newId = state.products.isEmpty ? 1 : state.products.map((p) => p.id).reduce((a, b) => a > b ? a : b) + 1;
     final newProduct = Product(
       id: newId,
       categoryId: categoryId,
+      brandId: brandId,
       brand: brand,
       brandAr: brandAr,
-      sku: sku,
-      barcode: barcode,
+      sku: sku ?? '',
+      barcode: barcode ?? '',
       nameEn: nameEn,
       nameAr: nameAr,
       descriptionEn: descEn,
       descriptionAr: descAr,
-      primaryImageUrl: primaryImage,
+      primaryImageUrl: primaryImage ?? '',
       unit: unit,
       unitSize: size,
       isActive: isActive,
     );
     state = state.copyWith(products: [...state.products, newProduct]);
+    return true;
   }
 
-  Future<void> updateProduct(int id, String nameEn, String nameAr, String brand, String brandAr, String sku, String barcode, String primaryImage, String unit, double size, int categoryId, int isActive, String? descEn, String? descAr) async {
+  Future<bool> updateProduct({
+    required int id,
+    required String nameEn,
+    required String nameAr,
+    int? brandId,
+    required String brand,
+    required String brandAr,
+    String? sku,
+    String? barcode,
+    String? primaryImage,
+    required String unit,
+    required double size,
+    required int categoryId,
+    required int isActive,
+    String? descEn,
+    String? descAr,
+    XFile? imageFile,
+  }) async {
+    final payload = {
+      'id': id,
+      'nameEn': nameEn,
+      'nameAr': nameAr,
+      if (brandId != null) 'brandId': brandId,
+      'brand': brand,
+      'brandAr': brandAr,
+      'sku': sku ?? '',
+      'barcode': barcode ?? '',
+      'primaryImageUrl': primaryImage ?? '',
+      'unit': unit,
+      'unitSize': size,
+      'categoryId': categoryId,
+      'active': isActive == 1,
+      'descriptionEn': descEn ?? '',
+      'descriptionAr': descAr ?? '',
+    };
+
     try {
-      await _apiClient.put(
+      final formMap = <String, dynamic>{
+        'data': MultipartFile.fromString(
+          jsonEncode(payload),
+          contentType: MediaType.parse('application/json'),
+        ),
+      };
+
+      if (imageFile != null) {
+        final bytes = await imageFile.readAsBytes();
+        formMap['file'] = MultipartFile.fromBytes(bytes, filename: imageFile.name);
+      }
+
+      final formData = FormData.fromMap(formMap);
+      final response = await _apiClient.put(
         '/products/update-product/$id',
-        data: {
-          'data': {
-            'nameEn': nameEn,
-            'nameAr': nameAr,
-            'brand': brand,
-            'brandAr': brandAr,
-            'sku': sku,
-            'barcode': barcode,
-            'primaryImageUrl': primaryImage,
-            'unit': unit,
-            'unitSize': size,
-            'categoryId': categoryId,
-            'active': isActive == 1,
-            'descriptionEn': descEn,
-            'descriptionAr': descAr,
-          }
-        },
+        data: formData,
       );
-    } catch (_) {}
+      if (response.statusCode == 200 && response.data != null) {
+        final updated = Product.fromJson(response.data as Map<String, dynamic>);
+        final list = [...state.products];
+        final idx = list.indexWhere((p) => p.id == id);
+        if (idx != -1) {
+          list[idx] = updated;
+          state = state.copyWith(products: list);
+        }
+        return true;
+      }
+    } catch (_) {
+      try {
+        await _apiClient.put(
+          '/products/update-product/$id',
+          data: {'data': payload},
+        );
+      } catch (_) {}
+    }
 
     state = state.copyWith(
       products: state.products.map((p) {
@@ -195,11 +429,12 @@ class ProductNotifier extends StateNotifier<ProductState> {
           return p.copyWith(
             nameEn: nameEn,
             nameAr: nameAr,
+            brandId: brandId ?? p.brandId,
             brand: brand,
             brandAr: brandAr,
-            sku: sku,
-            barcode: barcode,
-            primaryImageUrl: primaryImage,
+            sku: sku ?? p.sku,
+            barcode: barcode ?? p.barcode,
+            primaryImageUrl: primaryImage ?? p.primaryImageUrl,
             unit: unit,
             unitSize: size,
             categoryId: categoryId,
@@ -211,6 +446,7 @@ class ProductNotifier extends StateNotifier<ProductState> {
         return p;
       }).toList(),
     );
+    return true;
   }
 
   Future<void> deleteProduct(int id) async {
@@ -237,6 +473,23 @@ class ProductNotifier extends StateNotifier<ProductState> {
       sortOrder: sort,
     );
     state = state.copyWith(details: [...state.details, detail]);
+  }
+
+  void updateProductDetail(int id, String keyEn, String keyAr, String valEn, String valAr, int sort) {
+    state = state.copyWith(
+      details: state.details.map((d) {
+        if (d.id == id) {
+          return d.copyWith(
+            attrKeyEn: keyEn,
+            attrKeyAr: keyAr,
+            attrValueEn: valEn,
+            attrValueAr: valAr,
+            sortOrder: sort,
+          );
+        }
+        return d;
+      }).toList(),
+    );
   }
 
   void deleteProductDetail(int id) {

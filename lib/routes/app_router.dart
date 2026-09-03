@@ -28,6 +28,7 @@ import '../features/admin/presentation/cruds/stores_crud_screen.dart';
 import '../features/admin/presentation/cruds/branches_crud_screen.dart';
 import '../features/admin/presentation/cruds/products_crud_screen.dart';
 import '../features/admin/presentation/cruds/brands_crud_screen.dart';
+import '../features/admin/presentation/cruds/admin_product_detail_screen.dart';
 import '../features/admin/presentation/cruds/product_specs_crud_screen.dart';
 import '../features/admin/presentation/cruds/product_images_crud_screen.dart';
 import '../features/admin/presentation/cruds/offers_crud_screen.dart';
@@ -252,6 +253,13 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/admin/products/:id/details',
+            builder: (context, state) {
+              final prodId = int.parse(state.pathParameters['id']!);
+              return AdminProductDetailScreen(productId: prodId);
+            },
+          ),
+          GoRoute(
+            path: '/admin/product-specs/:id/details',
             builder: (context, state) {
               final prodId = int.parse(state.pathParameters['id']!);
               return ProductSpecsCrudScreen(productId: prodId);
