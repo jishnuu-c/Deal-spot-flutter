@@ -1,0 +1,177 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../../../core/services/flyer_repository.dart';
+import '../../../../core/services/store_repository.dart';
+import '../../../../core/services/city_repository.dart';
+import '../../../../models/models.dart';
+
+class FlyersCrudScreen extends ConsumerWidget {
+  const FlyersCrudScreen({super.key});
+
+  void _showForm(BuildContext context, WidgetRef ref, [Flyer? flyer]) {
+    final titleEnCtrl = TextEditingController(text: flyer?.titleEn);
+    final titleArCtrl = TextEditingController(text: flyer?.titleAr);
+    final coverCtrl = TextEditingController(text: flyer?.coverImageUrl ?? 'https://images.unsplash.com/photo-1578916171728-46686eac8d58?w=300&auto=format&fit=crop&q=60');
+    final pdfCtrl = TextEditingController(text: flyer?.pdfUrl ?? '');
+    final pagesCountCtrl = TextEditingController(text: flyer?.totalPages.toString() ?? '1');
+    final fromCtrl = TextEditingController(text: flyer?.validFrom ?? '2026-07-01');
+    final untilCtrl = TextEditingController(text: flyer?.validUntil ?? '2026-07-31');
+
+    final stores = ref.read(storeRepositoryProvider).stores;
+    final cities = ref.read(cityRepositoryProvider).cities;
+
+    int? selectedStoreId = flyer?.storeId ?? (stores.isNotEmpty ? stores[0].id : null);
+    int? selectedCityId = flyer?.cityId ?? (cities.isNotEmpty ? cities[0].id : null);
+    bool isActive = flyer == null ? true : flyer.isActive == 1;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text(flyer == null ? 'Add Flyer' : 'Edit Flyer'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(controller: titleEnCtrl, decoration: const InputDecoration(labelText: 'Title (EN)')),
+                    const SizedBox(height: 8),
+                    TextField(controller: titleArCtrl, decoration: const InputDecoration(labelText: 'Title (AR)')),
+                    const SizedBox(height: 8),
+                    TextField(controller: coverCtrl, decoration: const InputDecoration(labelText: 'Cover Image URL')),
+                    const SizedBox(height: 8),
+                    TextField(controller: pdfCtrl, decoration: const InputDecoration(labelText: 'PDF URL (Optional)')),
+                    const SizedBox(height: 8),
+                    TextField(controller: pagesCountCtrl, decoration: const InputDecoration(labelText: 'Total Pages Initial'), keyboardType: TextInputType.number),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(child: TextField(controller: fromCtrl, decoration: const InputDecoration(labelText: 'Valid From'))),
+                        const SizedBox(width: 8),
+                        Expanded(child: TextField(controller: untilCtrl, decoration: const InputDecoration(labelText: 'Valid Until'))),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<int>(
+                      value: selectedStoreId,
+                      decoration: const InputDecoration(labelText: 'Store'),
+                      items: stores.map((s) => DropdownMenuItem(value: s.id, child: Text(s.nameEn))).toList(),
+                      onChanged: (val) => setState(() => selectedStoreId = val),
+                    ),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<int>(
+                      value: selectedCityId,
+                      decoration: const InputDecoration(labelText: 'City'),
+                      items: cities.map((c) => DropdownMenuItem(value: c.id, child: Text(c.nameEn))).toList(),
+                      onChanged: (val) => setState(() => selectedCityId = val),
+                    ),
+                    const SizedBox(height: 8),
+                    CheckboxListTile(
+                      title: const Text('Is Active'),
+                      value: isActive,
+                      onChanged: (val) => setState(() => isActive = val ?? true),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+                ElevatedButton(
+                  onPressed: () {
+                    if (selectedStoreId == null || selectedCityId == null) return;
+                    final pages = int.tryParse(pagesCountCtrl.text) ?? 1;
+
+                    if (flyer == null) {
+                      ref.read(flyerRepositoryProvider.notifier).createFlyer(
+                            titleEnCtrl.text,
+                            titleArCtrl.text,
+                            coverCtrl.text,
+                            pdfCtrl.text.isEmpty ? null : pdfCtrl.text,
+                            pages,
+                            fromCtrl.text,
+                            untilCtrl.text,
+                            selectedStoreId!,
+                            selectedCityId!,
+                            isActive ? 1 : 0,
+                          );
+                    } else {
+                      ref.read(flyerRepositoryProvider.notifier).updateFlyer(
+                            flyer.id,
+                            titleEnCtrl.text,
+                            titleArCtrl.text,
+                            coverCtrl.text,
+                            pdfCtrl.text.isEmpty ? null : pdfCtrl.text,
+                            pages,
+                            fromCtrl.text,
+                            untilCtrl.text,
+                            selectedStoreId!,
+                            selectedCityId!,
+                            isActive ? 1 : 0,
+                          );
+                    }
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final list = ref.watch(flyerRepositoryProvider.notifier).getFlyers();
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Manage Flyers'),
+        actions: [
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white),
+            onPressed: () => _showForm(context, ref),
+            icon: const Icon(Icons.add),
+            label: const Text('Add Flyer'),
+          ),
+          const SizedBox(width: 16),
+        ],
+      ),
+      body: ListView.separated(
+        padding: const EdgeInsets.all(16),
+        itemCount: list.length,
+        separatorBuilder: (_, __) => const Divider(),
+        itemBuilder: (context, index) {
+          final flyer = list[index];
+          return ListTile(
+            leading: const Icon(Icons.picture_as_pdf, color: Colors.red),
+            title: Text(flyer.titleEn),
+            subtitle: Text('Store: ${flyer.store?.nameEn ?? ""} | Total Pages: ${flyer.totalPages} | Views: ${flyer.viewCount}'),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.orange.shade50, foregroundColor: Colors.orange, elevation: 0),
+                  onPressed: () => context.go('/admin/flyers/${flyer.id}/pages'),
+                  icon: const Icon(Icons.layers, size: 14),
+                  label: const Text('Pages', style: TextStyle(fontSize: 11)),
+                ),
+                const SizedBox(width: 8),
+                IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: () => _showForm(context, ref, flyer)),
+                IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red),
+                  onPressed: () {
+                    ref.read(flyerRepositoryProvider.notifier).deleteFlyer(flyer.id);
+                  },
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
