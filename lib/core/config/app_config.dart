@@ -3,22 +3,25 @@ class AppConfig {
   // apiUrl: 'http://192.168.1.110:8080/api/dealspot'
   // filePath: 'http://192.168.1.110:8080/'
   static const String baseUrl = String.fromEnvironment(
+    //   'API_URL',
+    //   defaultValue: 'http://192.168.1.110:8080/api/dealspot',
+    // );
     'API_URL',
-    defaultValue: 'http://192.168.1.110:8080/api/dealspot',
+    defaultValue: 'http://103.199.210.172:8080/api/dealspot',
   );
-  //   'API_URL',
-  //   defaultValue: 'http://103.199.210.172:8080/api/dealspot',
-  // );
   static const String serverUrl = String.fromEnvironment(
+    //   'SERVER_URL',
+    //   defaultValue: 'http://192.168.1.110:8080',
+    // );
     'SERVER_URL',
-    defaultValue: 'http://192.168.1.110:8080',
+    defaultValue: 'http://103.199.210.172:8080',
   );
-  //   'SERVER_URL',
-  //   defaultValue: 'http://192.168.1.110:8080',
-  // );
   static const String filePath = String.fromEnvironment(
+    //   'FILE_PATH',
+    //   defaultValue: 'http://192.168.1.110:8080/',
+    // );
     'FILE_PATH',
-    defaultValue: 'http://192.168.1.110:8080/',
+    defaultValue: 'http://103.199.210.172:8080/',
   );
   //   'FILE_PATH',
   //   defaultValue: 'http://103.199.210.172:8080/',
