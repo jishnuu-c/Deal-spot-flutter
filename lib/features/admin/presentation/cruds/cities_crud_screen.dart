@@ -22,6 +22,14 @@ class _CitiesCrudScreenState extends ConsumerState<CitiesCrudScreen> {
   int? _copiedCityId;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(cityRepositoryProvider.notifier).fetchCities();
+    });
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();

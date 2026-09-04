@@ -24,6 +24,17 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(cityRepositoryProvider.notifier).fetchCities();
+      ref.read(categoryRepositoryProvider.notifier).fetchCategories();
+      ref.read(storeRepositoryProvider.notifier).fetchStores();
+      ref.read(storeRepositoryProvider.notifier).fetchFollowedStores();
+    });
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();

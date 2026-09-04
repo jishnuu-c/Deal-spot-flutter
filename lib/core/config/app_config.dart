@@ -17,12 +17,15 @@ class AppConfig {
     defaultValue: 'http://192.168.1.110:8080/',
   );
 
-  /// Helper to resolve relative and absolute image URLs (matching Angular logic)
+  /// Helper to resolve relative and absolute image URLs (matching Angular logic: filePath + url)
   static String normalizeImageUrl(String? url) {
     if (url == null || url.trim().isEmpty) {
       return '';
     }
     var trimmed = url.trim();
+    if (trimmed == 'null' || trimmed == 'undefined') {
+      return '';
+    }
     if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
       return trimmed;
     }
@@ -32,9 +35,6 @@ class AppConfig {
     var base = filePath;
     if (!base.endsWith('/')) {
       base += '/';
-    }
-    if (!trimmed.startsWith('uploads/')) {
-      trimmed = 'uploads/$trimmed';
     }
     return '$base$trimmed';
   }

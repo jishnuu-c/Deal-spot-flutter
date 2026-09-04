@@ -12,6 +12,7 @@ import '../../../../core/services/brand_repository.dart';
 import '../../../../core/utils/translation_service.dart';
 import '../../../../models/models.dart';
 import '../../../../models/brand.dart';
+import '../../../../core/widgets/app_network_image.dart';
 import '../widgets/crud_loading_widget.dart';
 
 class ProductsCrudScreen extends ConsumerStatefulWidget {
@@ -36,6 +37,7 @@ class _ProductsCrudScreenState extends ConsumerState<ProductsCrudScreen> {
   bool _isLoading = true;
   bool _isLoadingMore = false;
   bool _hasMore = false;
+  int _displayedCount = 20;
 
   String _searchQuery = '';
   int? _selectedCategoryFilter;
@@ -57,6 +59,8 @@ class _ProductsCrudScreenState extends ConsumerState<ProductsCrudScreen> {
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(categoryRepositoryProvider.notifier).fetchCategories();
+      ref.read(brandRepositoryProvider.notifier).fetchBrands();
       _loadInitialProducts();
     });
   }
@@ -190,6 +194,43 @@ class _ProductsCrudScreenState extends ConsumerState<ProductsCrudScreen> {
     {'id': 'BUNCH', 'nameEn': 'Bunch', 'nameAr': 'عنقود'},
   ];
 
+  List<Product> _getFilteredProducts(List<Product> allProducts) {
+    final query = _searchQuery.toLowerCase().trim();
+    var list = allProducts;
+
+    if (query.isNotEmpty) {
+      list = list.where((p) {
+        final nameEn = p.nameEn.toLowerCase();
+        final nameAr = p.nameAr.toLowerCase();
+        final sku = p.sku.toLowerCase();
+        final barcode = p.barcode.toLowerCase();
+        final brand = p.brand.toLowerCase();
+        final brandAr = p.brandAr.toLowerCase();
+        final idStr = p.id.toString();
+        return nameEn.contains(query) ||
+            nameAr.contains(query) ||
+            sku.contains(query) ||
+            barcode.contains(query) ||
+            brand.contains(query) ||
+            brandAr.contains(query) ||
+            idStr.contains(query);
+      }).toList();
+    }
+
+    if (_selectedCategoryFilter != null) {
+      list = list.where((p) => p.categoryId == _selectedCategoryFilter).toList();
+    }
+
+    if (_selectedBrandFilter != null) {
+      list = list.where((p) {
+        if (p.brandId != null) return p.brandId == _selectedBrandFilter;
+        return false;
+      }).toList();
+    }
+
+    return list;
+  }
+
   @override
   Widget build(BuildContext context) {
     final isRtl = ref.watch(translationProvider) == AppLanguage.ar;
@@ -198,7 +239,11 @@ class _ProductsCrudScreenState extends ConsumerState<ProductsCrudScreen> {
     final brandState = ref.watch(brandRepositoryProvider);
     final brands = brandState.brands;
 
-    final activeCount = _products.where((p) => p.isActive == 1).length;
+    // Use loaded paged products directly for optimal performance and zero lag
+    final effectiveProducts = _products;
+    final totalCount = _totalElements;
+    final activeCount = effectiveProducts.where((p) => p.isActive == 1).length;
+    final suggestions = _suggestions;
 
     return Directionality(
       textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
@@ -209,6 +254,7 @@ class _ProductsCrudScreenState extends ConsumerState<ProductsCrudScreen> {
           onRefresh: () async {
             await Future.wait([
               _loadInitialProducts(),
+              ref.read(productRepositoryProvider.notifier).fetchProducts(),
               ref.read(categoryRepositoryProvider.notifier).fetchCategories(),
               ref.read(brandRepositoryProvider.notifier).fetchBrands(),
             ]);
@@ -226,7 +272,7 @@ class _ProductsCrudScreenState extends ConsumerState<ProductsCrudScreen> {
 
                 // 2. Stats Grid matching Angular
                 _buildStatsGrid(
-                  totalCount: _totalElements,
+                  totalCount: totalCount,
                   activeCount: activeCount,
                   isRtl: isRtl,
                   isDark: isDark,
@@ -235,28 +281,34 @@ class _ProductsCrudScreenState extends ConsumerState<ProductsCrudScreen> {
 
                 // 3. Search & Filter Toolbar matching Angular .filter-card
                 _buildFilterToolbar(
-                  filteredCount: _products.length,
-                  totalCount: _totalElements,
+                  filteredCount: effectiveProducts.length,
+                  totalCount: totalCount,
                   categories: categories,
                   brands: brands,
-                  suggestions: _suggestions,
+                  suggestions: suggestions,
                   isRtl: isRtl,
                   isDark: isDark,
                 ),
                 const SizedBox(height: 12),
 
                 // 4. Products List matching Angular .products-list-view
-                if (_isLoading && _products.isEmpty) ...[
+                if (_isLoading && effectiveProducts.isEmpty) ...[
                   _buildLoadingState(isRtl, isDark),
-                ] else if (_products.isEmpty) ...[
+                ] else if (effectiveProducts.isEmpty) ...[
                   _buildEmptyState(isRtl, isDark),
                 ] else ...[
                   _buildProductsList(
-                    products: _products,
-                    totalFilteredCount: _totalElements,
+                    products: effectiveProducts,
+                    totalFilteredCount: totalCount,
                     hasMore: _hasMore,
                     isLoadingMore: _isLoadingMore,
-                    onLoadMore: _loadNextPage,
+                    onLoadMore: () {
+                      if (_products.isNotEmpty) {
+                        _loadNextPage();
+                      } else {
+                        setState(() => _displayedCount = (_displayedCount + _pageSize).clamp(0, totalCount));
+                      }
+                    },
                     categories: categories,
                     brands: brands,
                     isRtl: isRtl,
@@ -490,219 +542,200 @@ class _ProductsCrudScreenState extends ConsumerState<ProductsCrudScreen> {
     final validCat = safeCategories.any((c) => c.id == _selectedCategoryFilter) ? _selectedCategoryFilter : null;
     final hasActiveFilter = _searchQuery.isNotEmpty || _selectedCategoryFilter != null || _selectedBrandFilter != null;
 
-    final searchStack = Stack(
-      clipBehavior: Clip.none,
-      children: [
-        SizedBox(
-          height: 38,
-          child: TextField(
-            controller: _searchController,
-            focusNode: _searchFocusNode,
-            onChanged: _onSearchChanged,
-            onTap: () {
-              if (_searchQuery.trim().isNotEmpty) {
-                setState(() => _showSuggestions = true);
-              }
-            },
-            style: TextStyle(
-              fontSize: 12,
-              color: isDark ? Colors.white : const Color(0xFF0F172A),
-            ),
-            decoration: InputDecoration(
-              hintText: isRtl
-                  ? 'ابحث بالاسم، الماركة، SKU، الباركود أو الرقم...'
-                  : 'Search by name, brand, SKU, barcode, ID...',
-              hintStyle: TextStyle(
-                fontSize: 11.5,
-                color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
-              ),
-              prefixIcon: Icon(
-                Icons.search,
-                size: 17,
-                color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
-              ),
-              suffixIcon: _searchQuery.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.close, size: 15),
-                      onPressed: () {
-                        _searchController.clear();
-                        _onSearchChanged('');
-                      },
-                    )
-                  : null,
-              filled: true,
-              fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(
-                  color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
-                ),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(
-                  color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
-                ),
-              ),
-              focusedBorder: const OutlineInputBorder(
-                borderRadius: BorderRadius.all(Radius.circular(8)),
-                borderSide: BorderSide(color: Color(0xFF16A34A), width: 1.5),
-              ),
+    final searchField = SizedBox(
+      height: 38,
+      child: TextField(
+        controller: _searchController,
+        focusNode: _searchFocusNode,
+        onChanged: _onSearchChanged,
+        onTap: () {
+          if (_searchQuery.trim().isNotEmpty) {
+            setState(() => _showSuggestions = true);
+          }
+        },
+        style: TextStyle(
+          fontSize: 12,
+          color: isDark ? Colors.white : const Color(0xFF0F172A),
+        ),
+        decoration: InputDecoration(
+          hintText: isRtl
+              ? 'ابحث بالاسم، الماركة، SKU، الباركود أو الرقم...'
+              : 'Search by name, brand, SKU, barcode, ID...',
+          hintStyle: TextStyle(
+            fontSize: 11.5,
+            color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+          ),
+          prefixIcon: Icon(
+            Icons.search,
+            size: 17,
+            color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+          ),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.close, size: 15),
+                  onPressed: () {
+                    _searchController.clear();
+                    _onSearchChanged('');
+                  },
+                )
+              : null,
+          filled: true,
+          fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(
+              color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
             ),
           ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(
+              color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+            ),
+          ),
+          focusedBorder: const OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(8)),
+            borderSide: BorderSide(color: Color(0xFF16A34A), width: 1.5),
+          ),
         ),
+      ),
+    );
 
-        // Suggestions Dropdown Popup Overlay
-        if (_showSuggestions && suggestions.isNotEmpty)
-          Positioned(
-            top: 42,
-            left: 0,
-            right: 0,
-            child: Material(
-              elevation: 8,
+    final suggestionsWidget = (_showSuggestions && suggestions.isNotEmpty)
+        ? Container(
+            margin: const EdgeInsets.only(top: 6),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
               borderRadius: BorderRadius.circular(10),
-              color: isDark ? const Color(0xFF1E293B) : Colors.white,
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+              border: Border.all(
+                color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(9)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.lightbulb_outline, size: 14, color: Color(0xFFF59E0B)),
+                      const SizedBox(width: 4),
+                      Text(
+                        isRtl ? 'المنتجات المقترحة' : 'Suggested Products',
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '(${suggestions.length})',
+                        style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
+                      ),
+                      const Spacer(),
+                      InkWell(
+                        onTap: () => setState(() => _showSuggestions = false),
+                        child: const Icon(Icons.close, size: 14, color: Color(0xFF94A3B8)),
+                      ),
+                    ],
                   ),
                 ),
-                constraints: const BoxConstraints(maxHeight: 220),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(9)),
-                      ),
+                const Divider(height: 1, thickness: 1),
+                ...suggestions.map((p) {
+                  final imgUrl = AppConfig.normalizeImageUrl(p.primaryImageUrl);
+                  return InkWell(
+                    onTap: () {
+                      _searchController.text = isRtl ? (p.nameAr.isNotEmpty ? p.nameAr : p.nameEn) : p.nameEn;
+                      _onSearchChanged(_searchController.text);
+                      setState(() => _showSuggestions = false);
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                       child: Row(
                         children: [
-                          const Icon(Icons.lightbulb_outline, size: 14, color: Color(0xFFF59E0B)),
-                          const SizedBox(width: 4),
-                          Text(
-                            isRtl ? 'المنتجات المقترحة' : 'Suggested Products',
-                            style: TextStyle(
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w700,
-                              color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: Container(
+                              width: 32,
+                              height: 32,
+                              color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                              child: AppNetworkImage(
+                                imageUrl: imgUrl,
+                                fit: BoxFit.contain,
+                                defaultFallbackIcon: Icons.inventory_2,
+                                fallbackIconSize: 16,
+                              ),
                             ),
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '(${suggestions.length})',
-                            style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  isRtl ? (p.nameAr.isNotEmpty ? p.nameAr : p.nameEn) : p.nameEn,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                  ),
+                                ),
+                                Row(
+                                  children: [
+                                    if (p.brand.isNotEmpty) ...[
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFFEF3C7),
+                                          borderRadius: BorderRadius.circular(3),
+                                        ),
+                                        child: Text(
+                                          isRtl ? (p.brandAr.isNotEmpty ? p.brandAr : p.brand) : p.brand,
+                                          style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Color(0xFF92400E)),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                    ],
+                                    if (p.sku.isNotEmpty) ...[
+                                      Text(
+                                        'SKU: ${p.sku}',
+                                        style: const TextStyle(fontSize: 9.5, color: Color(0xFF94A3B8)),
+                                      ),
+                                      const SizedBox(width: 4),
+                                    ],
+                                    Text(
+                                      'ID: #${p.id}',
+                                      style: const TextStyle(fontSize: 9.5, color: Color(0xFF94A3B8)),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.open_in_new, size: 14, color: Color(0xFF16A34A)),
+                            onPressed: () {
+                              setState(() => _showSuggestions = false);
+                              context.push('/admin/products/${p.id}/details');
+                            },
                           ),
                         ],
                       ),
                     ),
-                    const Divider(height: 1, thickness: 1),
-                    Flexible(
-                      child: ListView.separated(
-                        shrinkWrap: true,
-                        padding: EdgeInsets.zero,
-                        itemCount: suggestions.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1, thickness: 0.5),
-                        itemBuilder: (ctx, idx) {
-                          final p = suggestions[idx];
-                          final imgUrl = AppConfig.normalizeImageUrl(p.primaryImageUrl);
-                          return InkWell(
-                            onTap: () {
-                              _searchController.text = isRtl ? (p.nameAr.isNotEmpty ? p.nameAr : p.nameEn) : p.nameEn;
-                              _onSearchChanged(_searchController.text);
-                              setState(() => _showSuggestions = false);
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                              child: Row(
-                                children: [
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(6),
-                                    child: Container(
-                                      width: 32,
-                                      height: 32,
-                                      color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
-                                      child: imgUrl.isNotEmpty
-                                          ? CachedNetworkImage(
-                                              imageUrl: imgUrl,
-                                              fit: BoxFit.contain,
-                                              errorWidget: (_, __, ___) => const Icon(Icons.inventory_2, size: 16, color: Color(0xFF94A3B8)),
-                                            )
-                                          : const Icon(Icons.inventory_2, size: 16, color: Color(0xFF94A3B8)),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          isRtl ? (p.nameAr.isNotEmpty ? p.nameAr : p.nameEn) : p.nameEn,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            fontSize: 11.5,
-                                            fontWeight: FontWeight.w700,
-                                            color: isDark ? Colors.white : const Color(0xFF0F172A),
-                                          ),
-                                        ),
-                                        Row(
-                                          children: [
-                                            if (p.brand.isNotEmpty) ...[
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                                                decoration: BoxDecoration(
-                                                  color: const Color(0xFFFEF3C7),
-                                                  borderRadius: BorderRadius.circular(3),
-                                                ),
-                                                child: Text(
-                                                  isRtl ? (p.brandAr.isNotEmpty ? p.brandAr : p.brand) : p.brand,
-                                                  style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Color(0xFF92400E)),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 4),
-                                            ],
-                                            if (p.sku.isNotEmpty) ...[
-                                              Text(
-                                                'SKU: ${p.sku}',
-                                                style: const TextStyle(fontSize: 9.5, color: Color(0xFF94A3B8)),
-                                              ),
-                                              const SizedBox(width: 4),
-                                            ],
-                                            Text(
-                                              'ID: #${p.id}',
-                                              style: const TextStyle(fontSize: 9.5, color: Color(0xFF94A3B8)),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.open_in_new, size: 14, color: Color(0xFF16A34A)),
-                                    onPressed: () {
-                                      setState(() => _showSuggestions = false);
-                                      context.go('/admin/products/${p.id}/details');
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+                  );
+                }),
+              ],
             ),
-          ),
-      ],
-    );
+          )
+        : const SizedBox.shrink();
 
     // Dropdown for Category
     final categoryDropdown = Container(
@@ -887,7 +920,8 @@ class _ProductsCrudScreenState extends ConsumerState<ProductsCrudScreen> {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                searchStack,
+                searchField,
+                suggestionsWidget,
                 const SizedBox(height: 8),
                 Row(
                   children: [
@@ -911,7 +945,8 @@ class _ProductsCrudScreenState extends ConsumerState<ProductsCrudScreen> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              searchStack,
+              searchField,
+              suggestionsWidget,
               const SizedBox(height: 8),
               Row(
                 children: [
@@ -1069,7 +1104,7 @@ class _ProductsCrudScreenState extends ConsumerState<ProductsCrudScreen> {
                     children: [
                       // Main Clickable Item Row (navigates to details)
                       InkWell(
-                        onTap: () => context.go('/admin/products/${p.id}/details'),
+                        onTap: () => context.push('/admin/products/${p.id}/details'),
                         borderRadius: BorderRadius.circular(8),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.center,
@@ -1087,20 +1122,12 @@ class _ProductsCrudScreenState extends ConsumerState<ProductsCrudScreen> {
                                     color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
                                   ),
                                 ),
-                                child: imgUrl.isNotEmpty
-                                    ? CachedNetworkImage(
-                                        imageUrl: imgUrl,
-                                        fit: BoxFit.contain,
-                                        placeholder: (_, __) => const Center(
-                                          child: SizedBox(
-                                            width: 14,
-                                            height: 14,
-                                            child: CircularProgressIndicator(strokeWidth: 1.5, color: Color(0xFF16A34A)),
-                                          ),
-                                        ),
-                                        errorWidget: (_, __, ___) => const Icon(Icons.inventory_2, color: Color(0xFF94A3B8), size: 22),
-                                      )
-                                    : const Icon(Icons.inventory_2, color: Color(0xFF94A3B8), size: 22),
+                                child: AppNetworkImage(
+                                  imageUrl: imgUrl,
+                                  fit: BoxFit.contain,
+                                  defaultFallbackIcon: Icons.inventory_2,
+                                  fallbackIconSize: 22,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -1332,7 +1359,7 @@ class _ProductsCrudScreenState extends ConsumerState<ProductsCrudScreen> {
                                 icon: Icons.visibility_outlined,
                                 iconColor: const Color(0xFF2563EB),
                                 tooltip: isRtl ? 'عرض التفاصيل' : 'View Details',
-                                onTap: () => context.go('/admin/products/${p.id}/details'),
+                                onTap: () => context.push('/admin/products/${p.id}/details'),
                                 isDark: isDark,
                               ),
                               const SizedBox(width: 5),
@@ -1352,7 +1379,7 @@ class _ProductsCrudScreenState extends ConsumerState<ProductsCrudScreen> {
                                 icon: Icons.list_alt,
                                 iconColor: const Color(0xFF8B5CF6),
                                 tooltip: isRtl ? 'المواصفات الفنية' : 'Technical Specs',
-                                onTap: () => context.go('/admin/product-specs/${p.id}/details'),
+                                onTap: () => context.push('/admin/product-specs/${p.id}/details'),
                                 isDark: isDark,
                               ),
                               const SizedBox(width: 5),
@@ -2259,7 +2286,7 @@ class _ProductsCrudScreenState extends ConsumerState<ProductsCrudScreen> {
                 color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
                 child: pickedBytes != null
                     ? Image.memory(pickedBytes, fit: BoxFit.contain)
-                    : CachedNetworkImage(imageUrl: normExisting, fit: BoxFit.contain),
+                    : AppNetworkImage(imageUrl: normExisting, fit: BoxFit.contain),
               ),
             ),
             const SizedBox(width: 12),

@@ -6,10 +6,25 @@ import '../../../../core/services/store_repository.dart';
 import '../../../../core/services/product_repository.dart';
 import '../../../../models/models.dart';
 
-class CouponsCrudScreen extends ConsumerWidget {
+class CouponsCrudScreen extends ConsumerStatefulWidget {
   const CouponsCrudScreen({super.key});
 
-  void _showForm(BuildContext context, WidgetRef ref, [CouponCode? cc]) {
+  @override
+  ConsumerState<CouponsCrudScreen> createState() => _CouponsCrudScreenState();
+}
+
+class _CouponsCrudScreenState extends ConsumerState<CouponsCrudScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(couponRepositoryProvider.notifier).fetchCoupons();
+      ref.read(storeRepositoryProvider.notifier).fetchStores();
+      ref.read(offerRepositoryProvider.notifier).fetchOffers();
+    });
+  }
+
+  void _showForm(BuildContext context, [CouponCode? cc]) {
     final codeCtrl = TextEditingController(text: cc?.code);
     final valCtrl = TextEditingController(text: cc?.discountValue.toString() ?? '10.0');
     final minCartCtrl = TextEditingController(text: cc?.minCartValue?.toString() ?? '100.0');
@@ -154,7 +169,7 @@ class CouponsCrudScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final list = ref.watch(couponRepositoryProvider.notifier).getCoupons();
 
     return Scaffold(
@@ -163,7 +178,7 @@ class CouponsCrudScreen extends ConsumerWidget {
         actions: [
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white),
-            onPressed: () => _showForm(context, ref),
+            onPressed: () => _showForm(context),
             icon: const Icon(Icons.add),
             label: const Text('Add Coupon'),
           ),
@@ -179,11 +194,11 @@ class CouponsCrudScreen extends ConsumerWidget {
           return ListTile(
             leading: const Icon(Icons.card_giftcard, color: Colors.indigo),
             title: Text('${cc.code} (${cc.discountType}: ${cc.discountValue})'),
-            subtitle: Text('Min Cart: ${cc.minCartValue ?? 0} SAR | Limit: ${cc.usedCount}/${cc.maxUses ?? "\u221e"} uses | Valid until: ${cc.validUntil}'),
+            subtitle: Text('Min Cart: ${cc.minCartValue ?? 0} SAR | Limit: ${cc.usedCount}/${cc.maxUses ?? "∞"} uses | Valid until: ${cc.validUntil}'),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: () => _showForm(context, ref, cc)),
+                IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: () => _showForm(context, cc)),
                 IconButton(
                   icon: const Icon(Icons.delete, color: Colors.red),
                   onPressed: () {

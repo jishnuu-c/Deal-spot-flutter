@@ -45,11 +45,8 @@ class StoreNotifier extends StateNotifier<StoreState> {
           stores: [],
           branches: [],
           followedStoreIds: [],
-          isLoading: true,
-        )) {
-    fetchStores();
-    fetchFollowedStores();
-  }
+          isLoading: false,
+        ));
 
   Future<void> fetchStores() async {
     state = state.copyWith(isLoading: true);
@@ -111,6 +108,39 @@ class StoreNotifier extends StateNotifier<StoreState> {
     } catch (_) {
       return null;
     }
+  }
+
+  Future<Store?> fetchStoreById(int id) async {
+    try {
+      final response = await _apiClient.get('/stores/fetch-store/$id');
+      if (response.statusCode == 200 && response.data != null) {
+        final store = Store.fromJson(response.data as Map<String, dynamic>);
+        final list = [...state.stores];
+        final idx = list.indexWhere((s) => s.id == id);
+        if (idx != -1) {
+          list[idx] = store;
+        } else {
+          list.add(store);
+        }
+        state = state.copyWith(stores: list);
+        return _populateStore(store);
+      }
+    } catch (_) {}
+    return getStoreById(id);
+  }
+
+  Future<List<StoreBranch>> fetchBranchesForStore(int storeId) async {
+    try {
+      final response = await _apiClient.get('/store-branches/store/$storeId/branches');
+      if (response.statusCode == 200 && response.data != null) {
+        final rawList = response.data as List;
+        final list = rawList.map((e) => StoreBranch.fromJson(e as Map<String, dynamic>)).toList();
+        final otherBranches = state.branches.where((b) => b.storeId != storeId).toList();
+        state = state.copyWith(branches: [...otherBranches, ...list]);
+        return getBranchesForStore(storeId);
+      }
+    } catch (_) {}
+    return getBranchesForStore(storeId);
   }
 
   List<StoreBranch> getBranchesForStore(int storeId) {
@@ -411,18 +441,6 @@ class StoreNotifier extends StateNotifier<StoreState> {
   }
 
   // Admin CRUD - Branches
-  Future<void> fetchBranchesForStore(int storeId) async {
-    try {
-      final response = await _apiClient.get('/store-branches/store/$storeId/branches');
-      if (response.statusCode == 200 && response.data != null) {
-        final rawList = response.data as List;
-        final list = rawList.map((e) => StoreBranch.fromJson(e as Map<String, dynamic>)).toList();
-        final otherBranches = state.branches.where((b) => b.storeId != storeId).toList();
-        state = state.copyWith(branches: [...otherBranches, ...list]);
-      }
-    } catch (_) {}
-  }
-
   Future<bool> createBranch(
     int storeId,
     int cityId,

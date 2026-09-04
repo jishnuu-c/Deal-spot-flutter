@@ -8,6 +8,7 @@ import '../../../../core/config/app_config.dart';
 import '../../../../core/services/category_repository.dart';
 import '../../../../core/utils/translation_service.dart';
 import '../../../../models/category.dart';
+import '../../../../core/widgets/app_network_image.dart';
 import '../widgets/crud_loading_widget.dart';
 
 class CategoriesCrudScreen extends ConsumerStatefulWidget {
@@ -33,6 +34,9 @@ class _CategoriesCrudScreenState extends ConsumerState<CategoriesCrudScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(categoryRepositoryProvider.notifier).fetchCategories();
+    });
     _scrollController.addListener(() {
       final show = _scrollController.offset > 300;
       if (show != _showScrollTop) {
@@ -552,10 +556,11 @@ class _CategoriesCrudScreenState extends ConsumerState<CategoriesCrudScreen> {
                                           clipBehavior: Clip.antiAlias,
                                           child: pickedImageBytes != null
                                               ? Image.memory(pickedImageBytes!, fit: BoxFit.cover)
-                                              : CachedNetworkImage(
+                                              : AppNetworkImage(
                                                   imageUrl: existingImageUrl,
                                                   fit: BoxFit.cover,
-                                                  errorWidget: (_, __, ___) => const Icon(Icons.broken_image, size: 18),
+                                                  defaultFallbackIcon: Icons.category_outlined,
+                                                  fallbackIconSize: 18,
                                                 ),
                                         ),
                                         if (pickedImage != null)
@@ -1626,32 +1631,12 @@ class _CategoriesCrudScreenState extends ConsumerState<CategoriesCrudScreen> {
                           color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
                         ),
                       ),
-                      child: normalizedImg.isNotEmpty
-                          ? CachedNetworkImage(
-                              imageUrl: normalizedImg,
-                              fit: BoxFit.cover,
-                              placeholder: (_, __) => Center(
-                                child: Icon(
-                                  _getIconData(cat.iconSlug),
-                                  size: 20,
-                                  color: const Color(0xFF16A34A),
-                                ),
-                              ),
-                              errorWidget: (_, __, ___) => Center(
-                                child: Icon(
-                                  _getIconData(cat.iconSlug),
-                                  size: 20,
-                                  color: const Color(0xFF16A34A),
-                                ),
-                              ),
-                            )
-                          : Center(
-                              child: Icon(
-                                _getIconData(cat.iconSlug),
-                                size: 20,
-                                color: const Color(0xFF16A34A),
-                              ),
-                            ),
+                      child: AppNetworkImage(
+                        imageUrl: normalizedImg,
+                        fit: BoxFit.cover,
+                        defaultFallbackIcon: _getIconData(cat.iconSlug),
+                        fallbackIconSize: 20,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),

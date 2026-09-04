@@ -41,13 +41,13 @@ class ProductDetail extends Equatable {
 
   factory ProductDetail.fromJson(Map<String, dynamic> json) {
     return ProductDetail(
-      id: json['id'] as int,
-      productId: json['product_id'] as int,
-      attrKeyEn: json['attr_key_en'] as String,
-      attrKeyAr: json['attr_key_ar'] as String,
-      attrValueEn: json['attr_value_en'] as String,
-      attrValueAr: json['attr_value_ar'] as String,
-      sortOrder: json['sort_order'] as int,
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      productId: (json['productId'] as num?)?.toInt() ?? (json['product_id'] as num?)?.toInt() ?? 0,
+      attrKeyEn: json['attrKeyEn'] as String? ?? json['attr_key_en'] as String? ?? '',
+      attrKeyAr: json['attrKeyAr'] as String? ?? json['attr_key_ar'] as String? ?? '',
+      attrValueEn: json['attrValueEn'] as String? ?? json['attr_value_en'] as String? ?? '',
+      attrValueAr: json['attrValueAr'] as String? ?? json['attr_value_ar'] as String? ?? '',
+      sortOrder: (json['sortOrder'] as num?)?.toInt() ?? (json['sort_order'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -64,5 +64,13 @@ class ProductDetail extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, productId, attrKeyEn, attrKeyAr, attrValueEn, attrValueAr, sortOrder];
+  List<Object?> get props => [
+        id,
+        productId,
+        attrKeyEn,
+        attrKeyAr,
+        attrValueEn,
+        attrValueAr,
+        sortOrder,
+      ];
 }

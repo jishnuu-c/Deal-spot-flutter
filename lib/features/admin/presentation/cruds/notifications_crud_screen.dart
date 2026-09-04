@@ -20,6 +20,14 @@ class _NotificationsCrudScreenState extends ConsumerState<NotificationsCrudScree
   int? _selectedRefId;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(offerRepositoryProvider.notifier).fetchOffers();
+    });
+  }
+
+  @override
   void dispose() {
     _titleEnCtrl.dispose();
     _titleArCtrl.dispose();

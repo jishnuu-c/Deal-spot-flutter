@@ -25,16 +25,22 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     _loadProduct();
   }
 
-  void _loadProduct() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final product = ref.read(productRepositoryProvider.notifier).getProductById(widget.productId);
-      if (mounted) {
-        setState(() {
-          _product = product;
-          _loading = false;
-        });
-      }
-    });
+  Future<void> _loadProduct() async {
+    final cached = ref.read(productRepositoryProvider.notifier).getProductById(widget.productId);
+    if (cached != null && mounted) {
+      setState(() {
+        _product = cached;
+        _loading = false;
+      });
+    }
+    final product = await ref.read(productRepositoryProvider.notifier).fetchProductById(widget.productId);
+    await ref.read(productRepositoryProvider.notifier).fetchProductDetails(widget.productId);
+    if (mounted) {
+      setState(() {
+        _product = product ?? cached;
+        _loading = false;
+      });
+    }
   }
 
   @override

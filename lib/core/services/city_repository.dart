@@ -37,8 +37,7 @@ class CityState {
 class CityNotifier extends StateNotifier<CityState> {
   final ApiClient _apiClient;
 
-  CityNotifier(this._apiClient) : super(const CityState(cities: [], isLoading: true)) {
-    fetchCities();
+  CityNotifier(this._apiClient) : super(const CityState(cities: [], isLoading: false)) {
     _loadSelectedCity();
   }
 

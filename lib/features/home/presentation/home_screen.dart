@@ -13,8 +13,90 @@ import '../../../core/services/auth_repository.dart';
 import '../../../core/utils/translation_service.dart';
 import '../../../models/models.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  final ScrollController _brandScrollController = ScrollController();
+  List<Brand> _featuredBrands = [];
+  int _brandPage = 0;
+  bool _brandHasMore = true;
+  bool _brandLoading = false;
+  bool _brandLoadingMore = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _brandScrollController.addListener(_onBrandScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadInitialData();
+    });
+  }
+
+  @override
+  void dispose() {
+    _brandScrollController.removeListener(_onBrandScroll);
+    _brandScrollController.dispose();
+    super.dispose();
+  }
+
+  void _onBrandScroll() {
+    if (_brandScrollController.hasClients &&
+        _brandScrollController.position.pixels >=
+            _brandScrollController.position.maxScrollExtent - 60) {
+      if (_brandHasMore && !_brandLoading && !_brandLoadingMore) {
+        _loadNextBrandPage();
+      }
+    }
+  }
+
+  Future<void> _loadInitialData() async {
+    ref.read(cityRepositoryProvider.notifier).fetchCities();
+    ref.read(categoryRepositoryProvider.notifier).fetchCategories();
+    ref.read(offerRepositoryProvider.notifier).fetchOffers();
+    ref.read(flyerRepositoryProvider.notifier).fetchFlyers();
+    ref.read(storeRepositoryProvider.notifier).fetchStores();
+    ref.read(offerRepositoryProvider.notifier).fetchSavedOffers();
+    _loadFeaturedBrands(page: 0);
+  }
+
+  Future<void> _loadFeaturedBrands({int page = 0}) async {
+    if (page == 0) {
+      setState(() => _brandLoading = true);
+    } else {
+      setState(() => _brandLoadingMore = true);
+    }
+
+    final res = await ref.read(brandRepositoryProvider.notifier).fetchFeaturedBrandsPaged(
+      page: page,
+      size: 15,
+    );
+
+    if (mounted) {
+      setState(() {
+        if (page == 0) {
+          _featuredBrands = res.content;
+        } else {
+          final existingIds = _featuredBrands.map((b) => b.id).toSet();
+          final newItems = res.content.where((b) => !existingIds.contains(b.id)).toList();
+          _featuredBrands.addAll(newItems);
+        }
+        _brandPage = res.number;
+        _brandHasMore = !res.isLast && (res.number + 1 < res.totalPages);
+        _brandLoading = false;
+        _brandLoadingMore = false;
+      });
+    }
+  }
+
+  Future<void> _loadNextBrandPage() async {
+    if (_brandLoadingMore || !_brandHasMore) return;
+    _loadFeaturedBrands(page: _brandPage + 1);
+  }
 
   IconData _getIconForCategory(Category cat) {
     final slug = (cat.iconSlug.isNotEmpty ? cat.iconSlug : cat.nameEn).toLowerCase().trim();
@@ -63,7 +145,7 @@ class HomeScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final tr = ref.watch(localizationsProvider);
     final isRtl = ref.watch(translationProvider) == AppLanguage.ar;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -82,15 +164,15 @@ class HomeScreen extends ConsumerWidget {
     final flashDeals = ref.watch(offerRepositoryProvider.notifier).getOffers(OfferFilters(cityId: cityId, isFlash: true));
     final latestOffers = ref.watch(offerRepositoryProvider.notifier).getOffers(OfferFilters(cityId: cityId));
     final activeFlyers = ref.watch(flyerRepositoryProvider.notifier).getFlyers(cityId);
-    final featuredBrands = ref.watch(brandRepositoryProvider.notifier).getFeaturedBrands();
+    final featuredBrands = _featuredBrands.isNotEmpty
+        ? _featuredBrands
+        : ref.watch(brandRepositoryProvider.notifier).getFeaturedBrands();
     final stores = ref.watch(storeRepositoryProvider.notifier).getStores(cityId: cityId);
 
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: () async {
-          ref.invalidate(offerRepositoryProvider);
-          ref.invalidate(flyerRepositoryProvider);
-          ref.invalidate(brandRepositoryProvider);
+          await _loadInitialData();
         },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -231,6 +313,7 @@ class HomeScreen extends ConsumerWidget {
                 SizedBox(
                   height: 96,
                   child: ListView.builder(
+                    controller: _brandScrollController,
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     itemCount: featuredBrands.length + stores.length,

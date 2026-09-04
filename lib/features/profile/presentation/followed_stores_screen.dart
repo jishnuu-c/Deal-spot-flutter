@@ -6,11 +6,25 @@ import '../../../core/config/app_config.dart';
 import '../../../core/services/store_repository.dart';
 import '../../../core/utils/translation_service.dart';
 
-class FollowedStoresScreen extends ConsumerWidget {
+class FollowedStoresScreen extends ConsumerStatefulWidget {
   const FollowedStoresScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<FollowedStoresScreen> createState() => _FollowedStoresScreenState();
+}
+
+class _FollowedStoresScreenState extends ConsumerState<FollowedStoresScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(storeRepositoryProvider.notifier).fetchStores();
+      ref.read(storeRepositoryProvider.notifier).fetchFollowedStores();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final tr = ref.watch(localizationsProvider);
     final isRtl = ref.watch(translationProvider) == AppLanguage.ar;
     final isDark = Theme.of(context).brightness == Brightness.dark;

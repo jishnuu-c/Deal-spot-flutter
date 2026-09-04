@@ -2,15 +2,30 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/config/app_config.dart';
+import '../../../../core/widgets/app_network_image.dart';
 import '../../../../core/services/flyer_repository.dart';
 import '../../../../models/models.dart';
 
-class FlyerPagesCrudScreen extends ConsumerWidget {
+class FlyerPagesCrudScreen extends ConsumerStatefulWidget {
   final int flyerId;
 
   const FlyerPagesCrudScreen({super.key, required this.flyerId});
 
-  void _showForm(BuildContext context, WidgetRef ref) {
+  @override
+  ConsumerState<FlyerPagesCrudScreen> createState() => _FlyerPagesCrudScreenState();
+}
+
+class _FlyerPagesCrudScreenState extends ConsumerState<FlyerPagesCrudScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(flyerRepositoryProvider.notifier).fetchFlyerById(widget.flyerId);
+      ref.read(flyerRepositoryProvider.notifier).fetchFlyerPages(widget.flyerId);
+    });
+  }
+
+  void _showForm(BuildContext context) {
     final pageNumCtrl = TextEditingController(text: '1');
     final imgCtrl = TextEditingController();
     final thumbCtrl = TextEditingController();
@@ -36,7 +51,7 @@ class FlyerPagesCrudScreen extends ConsumerWidget {
               onPressed: () {
                 final pageNum = int.tryParse(pageNumCtrl.text) ?? 1;
                 ref.read(flyerRepositoryProvider.notifier).createFlyerPage(
-                      flyerId,
+                      widget.flyerId,
                       pageNum,
                       imgCtrl.text,
                       thumbCtrl.text,
@@ -52,8 +67,8 @@ class FlyerPagesCrudScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final flyer = ref.watch(flyerRepositoryProvider.notifier).getFlyerById(flyerId);
+  Widget build(BuildContext context) {
+    final flyer = ref.watch(flyerRepositoryProvider.notifier).getFlyerById(widget.flyerId);
     final pages = flyer?.pages ?? [];
 
     return Scaffold(
@@ -62,7 +77,7 @@ class FlyerPagesCrudScreen extends ConsumerWidget {
         actions: [
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white),
-            onPressed: () => _showForm(context, ref),
+            onPressed: () => _showForm(context),
             icon: const Icon(Icons.add),
             label: const Text('Add Page'),
           ),
@@ -78,12 +93,12 @@ class FlyerPagesCrudScreen extends ConsumerWidget {
           return ListTile(
             leading: ClipRRect(
               borderRadius: BorderRadius.circular(4),
-              child: CachedNetworkImage(
-                imageUrl: AppConfig.normalizeImageUrl(page.thumbUrl),
+              child: AppNetworkImage(
+                imageUrl: page.thumbUrl,
                 width: 40,
                 height: 50,
                 fit: BoxFit.cover,
-                errorWidget: (_, __, ___) => const Icon(Icons.picture_as_pdf),
+                defaultFallbackIcon: Icons.picture_as_pdf,
               ),
             ),
             title: Text('Page Sheet #${page.pageNumber}'),

@@ -10,6 +10,7 @@ import '../../../../core/services/category_repository.dart';
 import '../../../../core/utils/translation_service.dart';
 import '../../../../models/brand.dart';
 import '../../../../models/category.dart';
+import '../../../../core/widgets/app_network_image.dart';
 import '../widgets/crud_loading_widget.dart';
 
 class BrandsCrudScreen extends ConsumerStatefulWidget {
@@ -33,6 +34,10 @@ class _BrandsCrudScreenState extends ConsumerState<BrandsCrudScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(brandRepositoryProvider.notifier).fetchBrands();
+      ref.read(categoryRepositoryProvider.notifier).fetchCategories();
+    });
     _scrollController.addListener(() {
       final show = _scrollController.offset > 300;
       if (show != _showScrollTop) {
@@ -606,10 +611,11 @@ class _BrandsCrudScreenState extends ConsumerState<BrandsCrudScreen> {
                               padding: const EdgeInsets.all(3),
                               child: pickedLogoBytes != null
                                   ? Image.memory(pickedLogoBytes!, fit: BoxFit.contain)
-                                  : CachedNetworkImage(
+                                  : AppNetworkImage(
                                       imageUrl: existingLogoUrl,
                                       fit: BoxFit.contain,
-                                      errorWidget: (_, __, ___) => const Icon(Icons.broken_image, size: 18),
+                                      defaultFallbackIcon: Icons.loyalty_outlined,
+                                      fallbackIconSize: 18,
                                     ),
                             ),
                             const SizedBox(width: 10),
@@ -1509,20 +1515,12 @@ class _BrandsCrudScreenState extends ConsumerState<BrandsCrudScreen> {
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
                       ),
-                      child: logoUrl.isNotEmpty
-                          ? CachedNetworkImage(
-                              imageUrl: logoUrl,
-                              fit: BoxFit.contain,
-                              placeholder: (_, __) => const Center(
-                                child: SizedBox(
-                                  width: 14,
-                                  height: 14,
-                                  child: CircularProgressIndicator(strokeWidth: 1.5, color: Color(0xFF16A34A)),
-                                ),
-                              ),
-                              errorWidget: (_, __, ___) => const Icon(Icons.loyalty_outlined, color: Color(0xFF94A3B8), size: 20),
-                            )
-                          : const Icon(Icons.loyalty_outlined, color: Color(0xFF94A3B8), size: 20),
+                      child: AppNetworkImage(
+                        imageUrl: logoUrl,
+                        fit: BoxFit.contain,
+                        defaultFallbackIcon: Icons.loyalty_outlined,
+                        fallbackIconSize: 20,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),

@@ -7,6 +7,22 @@ import '../../models/brand.dart';
 import '../../models/category.dart';
 import 'api_client.dart';
 
+class PagedBrandResult {
+  final List<Brand> content;
+  final int totalElements;
+  final int totalPages;
+  final int number;
+  final bool isLast;
+
+  const PagedBrandResult({
+    required this.content,
+    required this.totalElements,
+    required this.totalPages,
+    required this.number,
+    this.isLast = false,
+  });
+}
+
 class BrandState {
   final List<Brand> brands;
   final bool isLoading;
@@ -30,9 +46,7 @@ class BrandState {
 class BrandNotifier extends StateNotifier<BrandState> {
   final ApiClient _apiClient;
 
-  BrandNotifier(this._apiClient) : super(const BrandState(brands: [], isLoading: true)) {
-    fetchBrands();
-  }
+  BrandNotifier(this._apiClient) : super(const BrandState(brands: [], isLoading: false));
 
   Future<void> fetchBrands() async {
     state = state.copyWith(isLoading: true);
@@ -46,6 +60,83 @@ class BrandNotifier extends StateNotifier<BrandState> {
       }
     } catch (_) {}
     state = state.copyWith(isLoading: false);
+  }
+
+  Future<PagedBrandResult> searchBrandsPaged({
+    String query = '',
+    int page = 0,
+    int size = 20,
+    bool? featured,
+  }) async {
+    final queryParams = <String, dynamic>{
+      'page': page,
+      'size': size,
+    };
+    if (query.trim().isNotEmpty) {
+      queryParams['q'] = query.trim();
+    }
+    if (featured != null) {
+      queryParams['featured'] = featured;
+    }
+
+    try {
+      final response = await _apiClient.get(
+        '/brands/search',
+        queryParameters: queryParams,
+      );
+      if (response.statusCode == 200 && response.data != null) {
+        if (response.data is Map) {
+          final map = response.data as Map<String, dynamic>;
+          final rawList = (map['content'] as List?) ?? [];
+          final list = rawList.map((e) => Brand.fromJson(e as Map<String, dynamic>)).toList();
+          final totalElements = (map['totalElements'] as num?)?.toInt() ?? list.length;
+          final totalPages = (map['totalPages'] as num?)?.toInt() ?? 1;
+          final number = (map['number'] as num?)?.toInt() ?? page;
+          final isLast = (map['last'] as bool?) ?? ((number + 1) >= totalPages);
+
+          final existingIds = state.brands.map((b) => b.id).toSet();
+          final newBrands = list.where((b) => !existingIds.contains(b.id)).toList();
+          if (newBrands.isNotEmpty) {
+            state = state.copyWith(brands: [...state.brands, ...newBrands]);
+          }
+
+          return PagedBrandResult(
+            content: list,
+            totalElements: totalElements,
+            totalPages: totalPages,
+            number: number,
+            isLast: isLast,
+          );
+        } else if (response.data is List) {
+          final rawList = response.data as List;
+          final list = rawList.map((e) => Brand.fromJson(e as Map<String, dynamic>)).toList();
+          return PagedBrandResult(
+            content: list,
+            totalElements: list.length,
+            totalPages: 1,
+            number: 0,
+            isLast: true,
+          );
+        }
+      }
+    } catch (_) {}
+
+    // Fallback: local search
+    final all = searchBrands(query, featuredOnly: featured);
+    final start = page * size;
+    final pagedList = start < all.length ? all.skip(start).take(size).toList() : <Brand>[];
+    final totalPages = (all.length / size).ceil();
+    return PagedBrandResult(
+      content: pagedList,
+      totalElements: all.length,
+      totalPages: totalPages == 0 ? 1 : totalPages,
+      number: page,
+      isLast: (page + 1) >= (totalPages == 0 ? 1 : totalPages),
+    );
+  }
+
+  Future<PagedBrandResult> fetchFeaturedBrandsPaged({int page = 0, int size = 15}) async {
+    return searchBrandsPaged(query: '', page: page, size: size, featured: true);
   }
 
   List<Brand> getFeaturedBrands() {
@@ -74,6 +165,25 @@ class BrandNotifier extends StateNotifier<BrandState> {
     } catch (_) {
       return null;
     }
+  }
+
+  Future<Brand?> fetchBrandById(int id) async {
+    try {
+      final response = await _apiClient.get('/brands/$id');
+      if (response.statusCode == 200 && response.data != null) {
+        final brand = Brand.fromJson(response.data as Map<String, dynamic>);
+        final list = [...state.brands];
+        final idx = list.indexWhere((b) => b.id == id);
+        if (idx != -1) {
+          list[idx] = brand;
+        } else {
+          list.add(brand);
+        }
+        state = state.copyWith(brands: list);
+        return brand;
+      }
+    } catch (_) {}
+    return getBrandById(id);
   }
 
   Future<bool> createBrand({

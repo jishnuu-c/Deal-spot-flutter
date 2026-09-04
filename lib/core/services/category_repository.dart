@@ -11,9 +11,7 @@ class CategoryNotifier extends StateNotifier<List<Category>> {
   bool isLoading = false;
   bool isSavingOrder = false;
 
-  CategoryNotifier(this._apiClient) : super(const []) {
-    fetchCategories();
-  }
+  CategoryNotifier(this._apiClient) : super(const []);
 
   Future<void> fetchCategories() async {
     isLoading = true;

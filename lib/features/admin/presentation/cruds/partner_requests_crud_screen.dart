@@ -26,6 +26,14 @@ class _PartnerRequestsCrudScreenState extends ConsumerState<PartnerRequestsCrudS
   int? _copiedCrId;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(partnerRequestRepositoryProvider.notifier).fetchRequests();
+    });
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();

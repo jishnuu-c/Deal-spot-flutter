@@ -40,6 +40,14 @@ class _OfferListScreenState extends ConsumerState<OfferListScreen> {
   void initState() {
     super.initState();
     _selectedMainCategoryId = widget.categoryIdFilter;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(cityRepositoryProvider.notifier).fetchCities();
+      ref.read(categoryRepositoryProvider.notifier).fetchCategories();
+      ref.read(storeRepositoryProvider.notifier).fetchStores();
+      ref.read(brandRepositoryProvider.notifier).fetchBrands();
+      ref.read(offerRepositoryProvider.notifier).fetchOffers();
+      ref.read(offerRepositoryProvider.notifier).fetchSavedOffers();
+    });
   }
 
   @override

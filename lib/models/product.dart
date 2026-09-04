@@ -16,7 +16,7 @@ class Product extends Equatable {
   final String? descriptionEn;
   final String? descriptionAr;
   final String primaryImageUrl;
-  final String unit; // 'pcs' | 'kg' | 'g' | 'l' | 'ml' | 'pack' | 'box'
+  final String unit; // 'EACH' | 'KG' | 'GRAM' | 'LITRE' | 'ML' | 'PACK' | 'BOX' | 'PAIR' | 'SET' | 'BUNCH'
   final double unitSize;
   final int isActive;
 
@@ -97,12 +97,55 @@ class Product extends Equatable {
         (json['brand_id'] as num?)?.toInt() ??
         (json['brand'] is Map ? (json['brand']['id'] as num?)?.toInt() : null);
 
+    final brandNameEn = json['brandNameEn'] as String? ??
+        (json['brand'] is String ? (json['brand'] as String) : (json['brand'] is Map ? (json['brand']['nameEn'] as String? ?? '') : ''));
+
+    final brandNameAr = json['brandNameAr'] as String? ??
+        json['brandAr'] as String? ??
+        json['brand_ar'] as String? ??
+        (json['brand'] is Map ? (json['brand']['nameAr'] as String? ?? '') : '');
+
+    List<ProductDetail>? parsedDetails;
+    if (json['details'] != null && json['details'] is List) {
+      parsedDetails = [];
+      for (final item in json['details'] as List) {
+        try {
+          if (item is Map<String, dynamic>) {
+            parsedDetails.add(ProductDetail.fromJson(item));
+          } else if (item is Map) {
+            parsedDetails.add(ProductDetail.fromJson(Map<String, dynamic>.from(item)));
+          }
+        } catch (_) {}
+      }
+    }
+
+    List<ProductImage>? parsedImages;
+    if (json['images'] != null && json['images'] is List) {
+      parsedImages = [];
+      for (final item in json['images'] as List) {
+        try {
+          if (item is Map<String, dynamic>) {
+            parsedImages.add(ProductImage.fromJson(item));
+          } else if (item is Map) {
+            parsedImages.add(ProductImage.fromJson(Map<String, dynamic>.from(item)));
+          }
+        } catch (_) {}
+      }
+    }
+
+    Category? parsedCategory;
+    if (json['category'] != null && json['category'] is Map) {
+      try {
+        parsedCategory = Category.fromJson(Map<String, dynamic>.from(json['category'] as Map));
+      } catch (_) {}
+    }
+
     return Product(
       id: (json['id'] as num?)?.toInt() ?? 0,
       categoryId: (json['categoryId'] as num?)?.toInt() ?? (json['category_id'] as num?)?.toInt() ?? 1,
       brandId: brandIdVal,
-      brand: json['brand'] is String ? (json['brand'] as String) : (json['brandNameEn'] as String? ?? ''),
-      brandAr: json['brandAr'] as String? ?? json['brand_ar'] as String? ?? json['brandNameAr'] as String? ?? '',
+      brand: brandNameEn,
+      brandAr: brandNameAr,
       sku: json['sku'] as String? ?? '',
       barcode: json['barcode'] as String? ?? '',
       nameEn: json['nameEn'] as String? ?? json['name_en'] as String? ?? '',
@@ -110,16 +153,12 @@ class Product extends Equatable {
       descriptionEn: json['descriptionEn'] as String? ?? json['description_en'] as String?,
       descriptionAr: json['descriptionAr'] as String? ?? json['description_ar'] as String?,
       primaryImageUrl: json['primaryImageUrl'] as String? ?? json['primary_image_url'] as String? ?? '',
-      unit: json['unit'] as String? ?? 'pcs',
+      unit: json['unit'] is String ? (json['unit'] as String) : 'EACH',
       unitSize: (json['unitSize'] as num?)?.toDouble() ?? (json['unit_size'] as num?)?.toDouble() ?? 1.0,
       isActive: isActiveVal,
-      category: json['category'] != null && json['category'] is Map ? Category.fromJson(json['category'] as Map<String, dynamic>) : null,
-      details: json['details'] != null && json['details'] is List
-          ? (json['details'] as List).map((e) => ProductDetail.fromJson(e as Map<String, dynamic>)).toList()
-          : null,
-      images: json['images'] != null && json['images'] is List
-          ? (json['images'] as List).map((e) => ProductImage.fromJson(e as Map<String, dynamic>)).toList()
-          : null,
+      category: parsedCategory,
+      details: parsedDetails,
+      images: parsedImages,
     );
   }
 

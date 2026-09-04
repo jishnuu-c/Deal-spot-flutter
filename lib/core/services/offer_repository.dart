@@ -65,6 +65,20 @@ class OfferState {
   }
 }
 
+class PagedOfferResult {
+  final List<Offer> content;
+  final int totalElements;
+  final int totalPages;
+  final int number;
+
+  const PagedOfferResult({
+    required this.content,
+    required this.totalElements,
+    required this.totalPages,
+    required this.number,
+  });
+}
+
 class OfferNotifier extends StateNotifier<OfferState> {
   final Ref _ref;
   final ApiClient _apiClient;
@@ -74,23 +88,26 @@ class OfferNotifier extends StateNotifier<OfferState> {
           offers: [],
           images: [],
           savedOfferIds: [],
-          isLoading: true,
-        )) {
-    fetchOffers();
-    fetchSavedOffers();
-  }
+          isLoading: false,
+        ));
 
-  Future<void> fetchOffers() async {
+  Future<void> fetchOffers({int? storeId, int? cityId, bool? includeExpired}) async {
     state = state.copyWith(isLoading: true);
     try {
-      final response = await _apiClient.get('/offers/fetch-all-offers');
+      final queryParams = <String, dynamic>{};
+      if (storeId != null) queryParams['storeId'] = storeId;
+      if (cityId != null) queryParams['cityId'] = cityId;
+      if (includeExpired == true) queryParams['includeExpired'] = true;
+
+      final response = await _apiClient.get(
+        '/offers/fetch-all-offers',
+        queryParameters: queryParams.isNotEmpty ? queryParams : null,
+      );
       if (response.statusCode == 200 && response.data != null) {
         final rawList = response.data as List;
         final list = rawList.map((e) => Offer.fromJson(e as Map<String, dynamic>)).toList();
-        if (list.isNotEmpty) {
-          state = state.copyWith(offers: list, isLoading: false);
-          return;
-        }
+        state = state.copyWith(offers: list, isLoading: false);
+        return;
       }
     } catch (_) {}
     state = state.copyWith(isLoading: false);
@@ -192,7 +209,7 @@ class OfferNotifier extends StateNotifier<OfferState> {
     try {
       final idx = state.offers.indexWhere((o) => o.id == id);
       if (idx == -1) {
-        _fetchOfferByIdRemote(id);
+        fetchOfferById(id);
         return null;
       }
 
@@ -210,14 +227,120 @@ class OfferNotifier extends StateNotifier<OfferState> {
     }
   }
 
-  Future<void> _fetchOfferByIdRemote(int id) async {
+  Future<PagedOfferResult> getPagedOffers({
+    int page = 0,
+    int size = 20,
+    String? search,
+    int? storeId,
+    String? badgeType,
+    bool? active,
+    String sortBy = 'createdAt',
+    String direction = 'desc',
+  }) async {
+    final queryParams = <String, dynamic>{
+      'page': page,
+      'size': size,
+      'sortBy': sortBy,
+      'direction': direction,
+    };
+    if (search != null && search.trim().isNotEmpty) {
+      queryParams['search'] = search.trim();
+    }
+    if (storeId != null) {
+      queryParams['storeId'] = storeId;
+    }
+    if (badgeType != null && badgeType != 'ALL' && badgeType.isNotEmpty) {
+      queryParams['badgeType'] = badgeType;
+    }
+    if (active != null) {
+      queryParams['active'] = active;
+    }
+
+    try {
+      final response = await _apiClient.get(
+        '/offers/paged',
+        queryParameters: queryParams,
+      );
+      if (response.statusCode == 200 && response.data != null) {
+        if (response.data is Map) {
+          final map = response.data as Map<String, dynamic>;
+          final rawList = (map['content'] as List?) ?? [];
+          final list = rawList.map((e) => Offer.fromJson(e as Map<String, dynamic>)).toList();
+          final totalElements = (map['totalElements'] as num?)?.toInt() ?? list.length;
+          final totalPages = (map['totalPages'] as num?)?.toInt() ?? 1;
+          final number = (map['number'] as num?)?.toInt() ?? page;
+
+          final existingIds = state.offers.map((o) => o.id).toSet();
+          final newOffers = list.where((o) => !existingIds.contains(o.id)).toList();
+          if (newOffers.isNotEmpty) {
+            state = state.copyWith(offers: [...state.offers, ...newOffers]);
+          }
+
+          return PagedOfferResult(
+            content: list.map((o) => _populateOffer(o)).toList(),
+            totalElements: totalElements,
+            totalPages: totalPages,
+            number: number,
+          );
+        } else if (response.data is List) {
+          final rawList = response.data as List;
+          final list = rawList.map((e) => Offer.fromJson(e as Map<String, dynamic>)).toList();
+          return PagedOfferResult(
+            content: list.map((o) => _populateOffer(o)).toList(),
+            totalElements: list.length,
+            totalPages: 1,
+            number: 0,
+          );
+        }
+      }
+    } catch (_) {}
+
+    // Fallback: local filtering
+    final all = getOffers();
+    var filtered = all;
+    if (search != null && search.trim().isNotEmpty) {
+      final q = search.trim().toLowerCase();
+      filtered = filtered.where((o) =>
+          o.titleEn.toLowerCase().contains(q) ||
+          o.titleAr.toLowerCase().contains(q)).toList();
+    }
+    if (storeId != null) {
+      filtered = filtered.where((o) => o.storeId == storeId).toList();
+    }
+    if (badgeType != null && badgeType != 'ALL' && badgeType.isNotEmpty) {
+      filtered = filtered.where((o) => o.badgeType == badgeType).toList();
+    }
+    if (active != null) {
+      filtered = filtered.where((o) => (o.isActive == 1) == active).toList();
+    }
+    final start = page * size;
+    final pagedList = start < filtered.length ? filtered.skip(start).take(size).toList() : <Offer>[];
+    final totalPages = (filtered.length / size).ceil();
+    return PagedOfferResult(
+      content: pagedList,
+      totalElements: filtered.length,
+      totalPages: totalPages == 0 ? 1 : totalPages,
+      number: page,
+    );
+  }
+
+  Future<Offer?> fetchOfferById(int id) async {
     try {
       final response = await _apiClient.get('/offers/fetch-offer/$id');
       if (response.statusCode == 200 && response.data != null) {
         final offer = Offer.fromJson(response.data as Map<String, dynamic>);
-        state = state.copyWith(offers: [...state.offers, offer]);
+        final list = [...state.offers];
+        final idx = list.indexWhere((o) => o.id == id);
+        if (idx != -1) {
+          list[idx] = offer;
+        } else {
+          list.add(offer);
+        }
+        state = state.copyWith(offers: list);
+        return _populateOffer(offer);
       }
     } catch (_) {}
+    return getOfferById(id);
   }
 
   Offer _populateOffer(Offer o) {

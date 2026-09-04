@@ -10,21 +10,23 @@ class CouponNotifier extends StateNotifier<List<CouponCode>> {
   final Ref _ref;
   final ApiClient _apiClient;
 
-  CouponNotifier(this._ref, this._apiClient) : super(const []) {
-    fetchCoupons();
-  }
+  CouponNotifier(this._ref, this._apiClient) : super(const []);
 
   String get _couponBaseUrl => '${AppConfig.serverUrl}/api/coupons';
 
-  Future<void> fetchCoupons() async {
+  Future<void> fetchCoupons({int? storeId}) async {
     try {
-      final response = await _apiClient.get('$_couponBaseUrl/fetch-all');
+      final queryParams = <String, dynamic>{};
+      if (storeId != null) queryParams['storeId'] = storeId;
+
+      final response = await _apiClient.get(
+        '$_couponBaseUrl/fetch-all',
+        queryParameters: queryParams.isNotEmpty ? queryParams : null,
+      );
       if (response.statusCode == 200 && response.data != null) {
         final rawList = response.data as List;
         final list = rawList.map((e) => CouponCode.fromJson(e as Map<String, dynamic>)).toList();
-        if (list.isNotEmpty) {
-          state = list;
-        }
+        state = list;
       }
     } catch (_) {}
   }

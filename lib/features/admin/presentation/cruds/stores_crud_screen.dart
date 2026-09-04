@@ -14,6 +14,7 @@ import '../../../../core/utils/translation_service.dart';
 import '../../../../models/category.dart';
 import '../../../../models/city.dart';
 import '../../../../models/store.dart';
+import '../../../../core/widgets/app_network_image.dart';
 import '../widgets/crud_loading_widget.dart';
 
 class StoresCrudScreen extends ConsumerStatefulWidget {
@@ -42,6 +43,11 @@ class _StoresCrudScreenState extends ConsumerState<StoresCrudScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(storeRepositoryProvider.notifier).fetchStores();
+      ref.read(cityRepositoryProvider.notifier).fetchCities();
+      ref.read(categoryRepositoryProvider.notifier).fetchCategories();
+    });
     _scrollController.addListener(() {
       final show = _scrollController.offset > 300;
       if (show != _showScrollTop) {
@@ -933,28 +939,12 @@ class _StoresCrudScreenState extends ConsumerState<StoresCrudScreen> {
                               color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
                             ),
                           ),
-                          child: logoUrl.isNotEmpty
-                              ? CachedNetworkImage(
-                                  imageUrl: logoUrl,
-                                  fit: BoxFit.contain,
-                                  placeholder: (_, __) => const Center(
-                                    child: SizedBox(
-                                      width: 14,
-                                      height: 14,
-                                      child: CircularProgressIndicator(strokeWidth: 1.5, color: Color(0xFF16A34A)),
-                                    ),
-                                  ),
-                                  errorWidget: (_, __, ___) => const Icon(
-                                    Icons.storefront_outlined,
-                                    color: Color(0xFF94A3B8),
-                                    size: 22,
-                                  ),
-                                )
-                              : const Icon(
-                                  Icons.storefront_outlined,
-                                  color: Color(0xFF94A3B8),
-                                  size: 22,
-                                ),
+                          child: AppNetworkImage(
+                            imageUrl: logoUrl,
+                            fit: BoxFit.contain,
+                            defaultFallbackIcon: Icons.storefront_outlined,
+                            fallbackIconSize: 22,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -1501,21 +1491,12 @@ class _StoresCrudScreenState extends ConsumerState<StoresCrudScreen> {
                               ),
                               child: pickedLogoBytes != null
                                   ? Image.memory(pickedLogoBytes!, fit: BoxFit.contain)
-                                  : (existingLogoUrl != null && existingLogoUrl!.isNotEmpty
-                                      ? CachedNetworkImage(
-                                          imageUrl: AppConfig.normalizeImageUrl(existingLogoUrl!),
-                                          fit: BoxFit.contain,
-                                          errorWidget: (_, __, ___) => const Icon(
-                                            Icons.storefront,
-                                            color: Color(0xFF94A3B8),
-                                            size: 24,
-                                          ),
-                                        )
-                                      : const Icon(
-                                          Icons.storefront,
-                                          color: Color(0xFF94A3B8),
-                                          size: 24,
-                                        )),
+                                  : AppNetworkImage(
+                                      imageUrl: existingLogoUrl,
+                                      fit: BoxFit.contain,
+                                      defaultFallbackIcon: Icons.storefront,
+                                      fallbackIconSize: 24,
+                                    ),
                             ),
                           ),
                           const SizedBox(width: 12),

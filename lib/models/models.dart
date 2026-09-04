@@ -19,3 +19,4 @@ export 'store_follow.dart';
 export 'coupon_code.dart';
 export 'notification.dart';
 export 'audit_log.dart';
+export 'attribute_key.dart';

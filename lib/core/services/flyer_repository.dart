@@ -37,25 +37,27 @@ class FlyerNotifier extends StateNotifier<FlyerState> {
       : super(const FlyerState(
           flyers: [],
           pages: [],
-          isLoading: true,
-        )) {
-    fetchFlyers();
-  }
+          isLoading: false,
+        ));
 
   // Helper url since flyers are mapped at /api/flyers (outside /api/dealspot)
   String get _flyerBaseUrl => '${AppConfig.serverUrl}/api/flyers';
 
-  Future<void> fetchFlyers() async {
+  Future<void> fetchFlyers({int? storeId}) async {
     state = state.copyWith(isLoading: true);
     try {
-      final response = await _apiClient.get('$_flyerBaseUrl/fetch-all-flyers');
+      final queryParams = <String, dynamic>{};
+      if (storeId != null) queryParams['storeId'] = storeId;
+
+      final response = await _apiClient.get(
+        '$_flyerBaseUrl/fetch-all-flyers',
+        queryParameters: queryParams.isNotEmpty ? queryParams : null,
+      );
       if (response.statusCode == 200 && response.data != null) {
         final rawList = response.data as List;
         final list = rawList.map((e) => Flyer.fromJson(e as Map<String, dynamic>)).toList();
-        if (list.isNotEmpty) {
-          state = state.copyWith(flyers: list, isLoading: false);
-          return;
-        }
+        state = state.copyWith(flyers: list, isLoading: false);
+        return;
       }
     } catch (_) {}
     state = state.copyWith(isLoading: false);
@@ -73,7 +75,7 @@ class FlyerNotifier extends StateNotifier<FlyerState> {
     try {
       final idx = state.flyers.indexWhere((f) => f.id == id);
       if (idx == -1) {
-        _fetchFlyerByIdRemote(id);
+        fetchFlyerById(id);
         return null;
       }
 
@@ -84,7 +86,7 @@ class FlyerNotifier extends StateNotifier<FlyerState> {
       updatedList[idx] = updatedFlyer;
       state = state.copyWith(flyers: updatedList);
 
-      _fetchPagesForFlyer(id);
+      fetchFlyerPages(id);
 
       return _populateFlyer(updatedFlyer);
     } catch (_) {
@@ -92,28 +94,38 @@ class FlyerNotifier extends StateNotifier<FlyerState> {
     }
   }
 
-  Future<void> _fetchFlyerByIdRemote(int id) async {
+  Future<Flyer?> fetchFlyerById(int id) async {
     try {
       final response = await _apiClient.get('$_flyerBaseUrl/fetch-flyer/$id');
       if (response.statusCode == 200 && response.data != null) {
         final flyer = Flyer.fromJson(response.data as Map<String, dynamic>);
-        state = state.copyWith(flyers: [...state.flyers, flyer]);
+        final list = [...state.flyers];
+        final idx = list.indexWhere((f) => f.id == id);
+        if (idx != -1) {
+          list[idx] = flyer;
+        } else {
+          list.add(flyer);
+        }
+        state = state.copyWith(flyers: list);
+        await fetchFlyerPages(id);
+        return _populateFlyer(flyer);
       }
     } catch (_) {}
+    return null;
   }
 
-  Future<void> _fetchPagesForFlyer(int flyerId) async {
+  Future<List<FlyerPage>> fetchFlyerPages(int flyerId) async {
     try {
       final response = await _apiClient.get('$_flyerBaseUrl/$flyerId/pages');
       if (response.statusCode == 200 && response.data != null) {
         final rawList = response.data as List;
         final list = rawList.map((e) => FlyerPage.fromJson(e as Map<String, dynamic>)).toList();
-        if (list.isNotEmpty) {
-          final otherPages = state.pages.where((p) => p.flyerId != flyerId).toList();
-          state = state.copyWith(pages: [...otherPages, ...list]);
-        }
+        final otherPages = state.pages.where((p) => p.flyerId != flyerId).toList();
+        state = state.copyWith(pages: [...otherPages, ...list]);
+        return list;
       }
     } catch (_) {}
+    return state.pages.where((p) => p.flyerId == flyerId).toList();
   }
 
   Flyer _populateFlyer(Flyer f) {

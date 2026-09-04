@@ -33,9 +33,7 @@ class PartnerRequestNotifier extends StateNotifier<PartnerRequestState> {
   final ApiClient _apiClient;
 
   PartnerRequestNotifier(this._ref, this._apiClient)
-      : super(const PartnerRequestState(requests: [], isLoading: true)) {
-    fetchRequests();
-  }
+      : super(const PartnerRequestState(requests: [], isLoading: false));
 
   Future<void> fetchRequests({PartnerRequestStatus? status}) async {
     state = state.copyWith(isLoading: true, errorMessage: null);

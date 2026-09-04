@@ -402,6 +402,17 @@ class MockStoreNotifier extends StateNotifier<StoreState> implements StoreNotifi
   Store? getStoreById(int id) => state.stores.where((s) => s.id == id).firstOrNull;
 
   @override
+  Future<void> fetchStores() async {}
+
+  Future<void> fetchBranches() async {}
+
+  @override
+  Future<List<StoreBranch>> fetchBranchesForStore(int storeId) async => getBranchesForStore(storeId);
+
+  @override
+  Future<Store?> fetchStoreById(int id) async => getStoreById(id);
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
@@ -410,11 +421,17 @@ class MockCityNotifier extends StateNotifier<CityState> implements CityNotifier 
       : super(CityState(cities: initialCities, selectedCity: null, isLoading: false));
 
   @override
+  Future<void> fetchCities() async {}
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class MockCategoryNotifier extends StateNotifier<List<Category>> implements CategoryNotifier {
-  MockCategoryNotifier(List<Category> initialCategories) : super(initialCategories);
+  MockCategoryNotifier(super.initialCategories);
+
+  @override
+  Future<void> fetchCategories() async {}
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -433,6 +450,9 @@ class MockProductNotifier extends StateNotifier<ProductState> implements Product
     if (p == null) return null;
     return p.copyWith(details: state.details.where((d) => d.productId == id).toList());
   }
+
+  @override
+  Future<void> fetchProducts() async {}
 
   @override
   Future<PagedProductResult> getPagedProducts({
@@ -463,12 +483,25 @@ class MockProductNotifier extends StateNotifier<ProductState> implements Product
   }
 
   @override
+  Future<Product?> fetchProductById(int id) async => getProductById(id);
+
+  @override
+  Future<List<ProductDetail>> fetchProductDetails(int productId) async =>
+      state.details.where((d) => d.productId == productId).toList();
+
+  @override
+  Future<List<AttributeKey>> fetchAttributeKeys() async => [];
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class MockBrandNotifier extends StateNotifier<BrandState> implements BrandNotifier {
   MockBrandNotifier(List<Brand> initialBrands)
       : super(BrandState(brands: initialBrands, isLoading: false));
+
+  @override
+  Future<void> fetchBrands() async {}
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

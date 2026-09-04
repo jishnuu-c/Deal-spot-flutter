@@ -40,14 +40,18 @@ class ProductImage extends Equatable {
   }
 
   factory ProductImage.fromJson(Map<String, dynamic> json) {
+    final isPrimaryVal = json['primary'] is bool
+        ? ((json['primary'] as bool) ? 1 : 0)
+        : (json['is_primary'] as num?)?.toInt() ?? (json['isPrimary'] as num?)?.toInt() ?? 0;
+
     return ProductImage(
-      id: json['id'] as int,
-      productId: json['product_id'] as int,
-      imageUrl: json['image_url'] as String,
-      altTextEn: json['alt_text_en'] as String?,
-      altTextAr: json['alt_text_ar'] as String?,
-      sortOrder: json['sort_order'] as int,
-      isPrimary: json['is_primary'] as int,
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      productId: (json['productId'] as num?)?.toInt() ?? (json['product_id'] as num?)?.toInt() ?? 0,
+      imageUrl: json['imageUrl'] as String? ?? json['image_url'] as String? ?? '',
+      altTextEn: json['altTextEn'] as String? ?? json['alt_text_en'] as String?,
+      altTextAr: json['altTextAr'] as String? ?? json['alt_text_ar'] as String?,
+      sortOrder: (json['sortOrder'] as num?)?.toInt() ?? (json['sort_order'] as num?)?.toInt() ?? 0,
+      isPrimary: isPrimaryVal,
     );
   }
 
@@ -64,5 +68,13 @@ class ProductImage extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, productId, imageUrl, altTextEn, altTextAr, sortOrder, isPrimary];
+  List<Object?> get props => [
+        id,
+        productId,
+        imageUrl,
+        altTextEn,
+        altTextAr,
+        sortOrder,
+        isPrimary,
+      ];
 }

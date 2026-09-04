@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -12,7 +11,9 @@ import '../../../../core/services/partner_request_repository.dart';
 import '../../../../core/services/city_repository.dart';
 import '../../../../core/services/category_repository.dart';
 import '../../../../core/services/brand_repository.dart';
+import '../../../../core/services/product_repository.dart';
 import '../../../../core/utils/translation_service.dart';
+import '../widgets/crud_loading_widget.dart';
 
 class AdminDashboardScreen extends ConsumerStatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -22,20 +23,58 @@ class AdminDashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
+  bool _isLoading = false;
   bool _isRefreshing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadData();
+    });
+  }
+
+  Future<void> _loadData() async {
+    final storeState = ref.read(storeRepositoryProvider);
+    final offerState = ref.read(offerRepositoryProvider);
+    if (storeState.stores.isEmpty && offerState.offers.isEmpty) {
+      if (mounted) setState(() => _isLoading = true);
+    }
+
+    try {
+      await Future.wait([
+        ref.read(storeRepositoryProvider.notifier).fetchStores(),
+        ref.read(offerRepositoryProvider.notifier).fetchOffers(),
+        ref.read(offerRepositoryProvider.notifier).fetchSavedOffers(),
+        ref.read(flyerRepositoryProvider.notifier).fetchFlyers(),
+        ref.read(partnerRequestRepositoryProvider.notifier).fetchRequests(),
+        ref.read(cityRepositoryProvider.notifier).fetchCities(),
+        ref.read(categoryRepositoryProvider.notifier).fetchCategories(),
+        ref.read(brandRepositoryProvider.notifier).fetchBrands(),
+        ref.read(productRepositoryProvider.notifier).getPagedProducts(page: 0, size: 20),
+      ]);
+    } catch (_) {}
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
+  }
 
   Future<void> _refreshData() async {
     setState(() => _isRefreshing = true);
-    await Future.wait([
-      ref.read(storeRepositoryProvider.notifier).fetchStores(),
-      ref.read(offerRepositoryProvider.notifier).fetchOffers(),
-      ref.read(offerRepositoryProvider.notifier).fetchSavedOffers(),
-      ref.read(flyerRepositoryProvider.notifier).fetchFlyers(),
-      ref.read(partnerRequestRepositoryProvider.notifier).fetchRequests(),
-      ref.read(cityRepositoryProvider.notifier).fetchCities(),
-      ref.read(categoryRepositoryProvider.notifier).fetchCategories(),
-      ref.read(brandRepositoryProvider.notifier).fetchBrands(),
-    ]);
+    try {
+      await Future.wait([
+        ref.read(storeRepositoryProvider.notifier).fetchStores(),
+        ref.read(offerRepositoryProvider.notifier).fetchOffers(),
+        ref.read(offerRepositoryProvider.notifier).fetchSavedOffers(),
+        ref.read(flyerRepositoryProvider.notifier).fetchFlyers(),
+        ref.read(partnerRequestRepositoryProvider.notifier).fetchRequests(),
+        ref.read(cityRepositoryProvider.notifier).fetchCities(),
+        ref.read(categoryRepositoryProvider.notifier).fetchCategories(),
+        ref.read(brandRepositoryProvider.notifier).fetchBrands(),
+        ref.read(productRepositoryProvider.notifier).getPagedProducts(page: 0, size: 20),
+      ]);
+    } catch (_) {}
     if (mounted) {
       setState(() => _isRefreshing = false);
     }
@@ -51,15 +90,33 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     final offerState = ref.watch(offerRepositoryProvider);
     final flyerState = ref.watch(flyerRepositoryProvider);
     final partnerState = ref.watch(partnerRequestRepositoryProvider);
+    final productState = ref.watch(productRepositoryProvider);
     final auditLogs = ref.watch(auditLogRepositoryProvider);
 
     final storesCount = storeState.stores.length;
     final offersCount = offerState.offers.length;
     final flyersCount = flyerState.flyers.length;
-    final savesCount = offerState.savedOfferIds.length;
+    final productsCount = productState.products.length;
     final pendingPartnerCount = partnerState.requests
         .where((r) => r.status == PartnerRequestStatus.PENDING)
         .length;
+
+    if (_isLoading && storesCount == 0 && offersCount == 0) {
+      return Directionality(
+        textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
+        child: Scaffold(
+          backgroundColor: isDark ? const Color(0xFF0B1120) : const Color(0xFFF8FAFC),
+          body: CrudLoadingWidget(
+            isRtl: isRtl,
+            isDark: isDark,
+            titleEn: 'Loading Admin Dashboard...',
+            titleAr: 'جاري تحميل لوحة التحكم...',
+            subtitleEn: 'Fetching analytics, stores, offers, and partner requests...',
+            subtitleAr: 'جاري جلب الإحصائيات والمتاجر والعروض وطلبات الشراكة...',
+          ),
+        ),
+      );
+    }
 
     return Directionality(
       textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
@@ -84,7 +141,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                   const SizedBox(height: 20),
                 ],
 
-                // 2. Stats Grid (4 Cards: Stores, Offers, Flyers, Saves)
+                // 2. Stats Grid (4 Cards: Stores, Offers, Flyers, Products)
                 _buildStatsGrid(
                   context: context,
                   isRtl: isRtl,
@@ -92,7 +149,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                   storesCount: storesCount,
                   offersCount: offersCount,
                   flyersCount: flyersCount,
-                  savesCount: savesCount,
+                  productsCount: productsCount,
                 ),
                 const SizedBox(height: 28),
 
@@ -272,7 +329,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     required int storesCount,
     required int offersCount,
     required int flyersCount,
-    required int savesCount,
+    required int productsCount,
   }) {
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -320,12 +377,12 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
             ),
             _buildStatCard(
               context: context,
-              icon: Icons.bookmark_border_rounded,
-              label: isRtl ? 'حفظ العروض' : 'Offer Saves',
-              count: savesCount.toString(),
-              color: const Color(0xFFDC2626),
-              bgColor: isDark ? const Color(0xFF7F1D1D).withValues(alpha: 0.35) : const Color(0xFFFEE2E2),
-              route: '/saved-offers',
+              icon: Icons.inventory_2_outlined,
+              label: isRtl ? 'المنتجات' : 'Products',
+              count: productsCount.toString(),
+              color: const Color(0xFF8B5CF6),
+              bgColor: isDark ? const Color(0xFF4C1D95).withValues(alpha: 0.35) : const Color(0xFFEDE9FE),
+              route: '/admin/products',
               isDark: isDark,
             ),
           ],
@@ -473,43 +530,6 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
               children: [
                 _buildShortcutItem(
                   context: context,
-                  route: '/admin/partner-requests',
-                  icon: Icons.handshake_outlined,
-                  title: isRtl ? 'طلبات الشراكة' : 'Partner Applications',
-                  subtitle: isRtl
-                      ? 'مراجعة طلبات الانضمام واعتماد المتاجر والتحقق من السجل التجاري.'
-                      : 'Review merchant partner requests, verify CR, and provision stores.',
-                  isDark: isDark,
-                  isRtl: isRtl,
-                  badgeCount: pendingPartnerCount,
-                ),
-                const SizedBox(height: 10),
-                _buildShortcutItem(
-                  context: context,
-                  route: '/admin/cities',
-                  icon: Icons.location_city_outlined,
-                  title: isRtl ? 'إدارة المدن والمناطق' : 'Cities & Regions',
-                  subtitle: isRtl
-                      ? 'إدارة مناطق التغطية والإحداثيات الجغرافية ورموز المناطق.'
-                      : 'Manage coverage zones, geo-coordinates and region codes.',
-                  isDark: isDark,
-                  isRtl: isRtl,
-                ),
-                const SizedBox(height: 10),
-                _buildShortcutItem(
-                  context: context,
-                  route: '/admin/categories',
-                  icon: Icons.category_outlined,
-                  title: isRtl ? 'إدارة الفئات والأقسام' : 'Categories & Departments',
-                  subtitle: isRtl
-                      ? 'تنظيم الأقسام الرئيسية والفرعية وترتيب الظهور والأيقونات.'
-                      : 'Organize parent and subcategories, sort orders, and icons.',
-                  isDark: isDark,
-                  isRtl: isRtl,
-                ),
-                const SizedBox(height: 10),
-                _buildShortcutItem(
-                  context: context,
                   route: '/admin/stores',
                   icon: Icons.storefront_outlined,
                   title: isRtl ? 'إدارة المتاجر' : 'Manage Retailers',
@@ -576,6 +596,43 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                   subtitle: isRtl
                       ? 'إدارة قيم الخصم وحدود الاستخدام وحالات الصلاحية.'
                       : 'Manage discount values, usage thresholds, and validity states.',
+                  isDark: isDark,
+                  isRtl: isRtl,
+                ),
+                const SizedBox(height: 10),
+                _buildShortcutItem(
+                  context: context,
+                  route: '/admin/partner-requests',
+                  icon: Icons.handshake_outlined,
+                  title: isRtl ? 'طلبات الشراكة' : 'Partner Applications',
+                  subtitle: isRtl
+                      ? 'مراجعة طلبات الانضمام واعتماد المتاجر والتحقق من السجل التجاري.'
+                      : 'Review merchant partner requests, verify CR, and provision stores.',
+                  isDark: isDark,
+                  isRtl: isRtl,
+                  badgeCount: pendingPartnerCount,
+                ),
+                const SizedBox(height: 10),
+                _buildShortcutItem(
+                  context: context,
+                  route: '/admin/cities',
+                  icon: Icons.location_city_outlined,
+                  title: isRtl ? 'إدارة المدن والمناطق' : 'Cities & Regions',
+                  subtitle: isRtl
+                      ? 'إدارة مناطق التغطية والإحداثيات الجغرافية ورموز المناطق.'
+                      : 'Manage coverage zones, geo-coordinates and region codes.',
+                  isDark: isDark,
+                  isRtl: isRtl,
+                ),
+                const SizedBox(height: 10),
+                _buildShortcutItem(
+                  context: context,
+                  route: '/admin/categories',
+                  icon: Icons.category_outlined,
+                  title: isRtl ? 'إدارة الفئات والأقسام' : 'Categories & Departments',
+                  subtitle: isRtl
+                      ? 'تنظيم الأقسام الرئيسية والفرعية وترتيب الظهور والأيقونات.'
+                      : 'Organize parent and subcategories, sort orders, and icons.',
                   isDark: isDark,
                   isRtl: isRtl,
                 ),
@@ -748,24 +805,13 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        isRtl ? 'عرض السجل الكامل' : 'View All',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF16A34A),
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Icon(
-                        isRtl ? Icons.chevron_left : Icons.chevron_right,
-                        size: 14,
-                        color: const Color(0xFF16A34A),
-                      ),
-                    ],
+                  child: Text(
+                    isRtl ? 'عرض السجل الكامل' : 'View Full Logs',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF16A34A),
+                    ),
                   ),
                 ),
               ],
@@ -776,206 +822,121 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
             color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
           ),
 
-          // Panel Body - Audit Timeline or Empty State
+          // Panel Body - Timeline / Empty State
           Padding(
-            padding: const EdgeInsets.all(20.0),
+            padding: const EdgeInsets.all(16.0),
             child: recentLogs.isEmpty
-                ? _buildEmptyAuditState(isRtl, isDark)
-                : _buildAuditTimeline(recentLogs, isRtl, isDark),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Audit Timeline
-  Widget _buildAuditTimeline(List<AuditLog> logs, bool isRtl, bool isDark) {
-    return ListView.separated(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: logs.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 16),
-      itemBuilder: (context, index) {
-        final log = logs[index];
-        final actionLower = log.action.toLowerCase();
-        
-        Color markerColor;
-        Color badgeBg;
-        Color badgeText;
-
-        if (actionLower == 'create') {
-          markerColor = const Color(0xFF16A34A);
-          badgeBg = isDark ? const Color(0xFF064E3B).withValues(alpha: 0.4) : const Color(0xFFDCFCE7);
-          badgeText = const Color(0xFF16A34A);
-        } else if (actionLower == 'update') {
-          markerColor = const Color(0xFF2563EB);
-          badgeBg = isDark ? const Color(0xFF1E3A8A).withValues(alpha: 0.4) : const Color(0xFFDBEAFE);
-          badgeText = const Color(0xFF2563EB);
-        } else if (actionLower == 'delete') {
-          markerColor = const Color(0xFFDC2626);
-          badgeBg = isDark ? const Color(0xFF7F1D1D).withValues(alpha: 0.4) : const Color(0xFFFEE2E2);
-          badgeText = const Color(0xFFDC2626);
-        } else {
-          markerColor = const Color(0xFFD97706);
-          badgeBg = isDark ? const Color(0xFF78350F).withValues(alpha: 0.4) : const Color(0xFFFEF3C7);
-          badgeText = const Color(0xFFD97706);
-        }
-
-        // Time display
-        String timeDisplay = log.createdAt;
-        if (timeDisplay.contains('T')) {
-          final parts = timeDisplay.split('T');
-          if (parts.length > 1) {
-            timeDisplay = parts[1].replaceAll('Z', '');
-            if (timeDisplay.length > 8) {
-              timeDisplay = timeDisplay.substring(0, 8);
-            }
-          }
-        }
-
-        return IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Timeline vertical track with circular marker
-              Column(
-                children: [
-                  Container(
-                    width: 10,
-                    height: 10,
-                    margin: const EdgeInsets.only(top: 4),
-                    decoration: BoxDecoration(
-                      color: markerColor,
-                      shape: BoxShape.circle,
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 36),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.history_outlined,
+                              size: 32,
+                              color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            isRtl ? 'لا توجد تعديلات مسجلة حتى الآن' : 'No changes recorded yet',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            isRtl
+                                ? 'سيتم تسجيل أي عمليات إضافة أو تعديل تلقائياً في سجل الرقابة.'
+                                : 'All create, update, and delete actions will automatically appear here.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  Expanded(
-                    child: Container(
-                      width: 2,
-                      margin: const EdgeInsets.symmetric(vertical: 4),
+                  )
+                : ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: recentLogs.length,
+                    separatorBuilder: (_, __) => Divider(
+                      height: 16,
                       color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
                     ),
+                    itemBuilder: (context, index) {
+                      final log = recentLogs[index];
+                      final isCreate = log.action == 'CREATE';
+                      final isDelete = log.action == 'DELETE';
+                      final badgeColor = isCreate
+                          ? const Color(0xFF16A34A)
+                          : (isDelete ? const Color(0xFFDC2626) : const Color(0xFF2563EB));
+                      final badgeBg = isCreate
+                          ? (isDark ? const Color(0xFF064E3B).withValues(alpha: 0.3) : const Color(0xFFDCFCE7))
+                          : (isDelete
+                              ? (isDark ? const Color(0xFF7F1D1D).withValues(alpha: 0.3) : const Color(0xFFFEE2E2))
+                              : (isDark ? const Color(0xFF1E3A8A).withValues(alpha: 0.3) : const Color(0xFFDBEAFE)));
+
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: badgeBg,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              log.action,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                color: badgeColor,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${log.entityType} (ID: ${log.entityId})',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Admin #${log.performedBy} • ${log.createdAt.split('T').first}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
-                ],
-              ),
-              const SizedBox(width: 12),
-
-              // Timeline Content
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Title row: Action badge, Entity ID, and Date
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: badgeBg,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            log.action.toUpperCase(),
-                            style: TextStyle(
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w800,
-                              color: badgeText,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            '${log.entityType.toUpperCase()} (ID: ${log.entityId})',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: isDark ? Colors.white : const Color(0xFF0F172A),
-                            ),
-                          ),
-                        ),
-                        Text(
-                          timeDisplay,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-
-                    // Performer info
-                    Text(
-                      isRtl
-                          ? 'بواسطة المشرف ID: ${log.performedBy} • IP: ${log.ipAddress ?? "N/A"}'
-                          : 'Performed by User ID: ${log.performedBy} • IP: ${log.ipAddress ?? "N/A"}',
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                      ),
-                    ),
-
-                    // Payload json box
-                    if (log.payload != null && log.payload!.isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
-                            color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-                          ),
-                        ),
-                        child: Text(
-                          jsonEncode(log.payload),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontFamily: 'monospace',
-                            fontSize: 11,
-                            color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
           ),
-        );
-      },
-    );
-  }
-
-  // Empty State for Audits
-  Widget _buildEmptyAuditState(bool isRtl, bool isDark) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 24),
-        child: Column(
-          children: [
-            Icon(
-              Icons.history,
-              size: 44,
-              color: isDark ? const Color(0xFF475569) : const Color(0xFF94A3B8),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              isRtl
-                  ? 'لا توجد تعديلات مسجلة في سجلات النظام حتى الآن.'
-                  : 'No changes recorded in the system logs yet.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 13,
-                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-              ),
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }

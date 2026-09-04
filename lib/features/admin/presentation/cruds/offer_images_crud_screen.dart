@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/config/app_config.dart';
+import '../../../../core/widgets/app_network_image.dart';
 import '../../../../core/services/offer_repository.dart';
 import '../../../../models/models.dart';
 
@@ -82,11 +83,10 @@ class OfferImagesCrudScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Expanded(
-                  child: CachedNetworkImage(
-                    imageUrl: AppConfig.normalizeImageUrl(img.imageUrl),
+                  child: AppNetworkImage(
+                    imageUrl: img.imageUrl,
                     fit: BoxFit.cover,
-                    placeholder: (_, __) => Container(color: Colors.grey.shade200),
-                    errorWidget: (_, __, ___) => const Icon(Icons.broken_image),
+                    defaultFallbackIcon: Icons.broken_image,
                   ),
                 ),
                 Padding(

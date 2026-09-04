@@ -22,6 +22,15 @@ class _FlyerViewerScreenState extends ConsumerState<FlyerViewerScreen> {
   final PageController _pageController = PageController();
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(flyerRepositoryProvider.notifier).fetchFlyerById(widget.flyerId);
+      ref.read(flyerRepositoryProvider.notifier).fetchFlyerPages(widget.flyerId);
+    });
+  }
+
+  @override
   void dispose() {
     _pageController.dispose();
     super.dispose();

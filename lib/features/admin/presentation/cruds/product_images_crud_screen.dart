@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/config/app_config.dart';
+import '../../../../core/widgets/app_network_image.dart';
 import '../../../../core/services/product_repository.dart';
 import '../../../../models/models.dart';
 
@@ -107,11 +108,10 @@ class ProductImagesCrudScreen extends ConsumerWidget {
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      CachedNetworkImage(
-                        imageUrl: AppConfig.normalizeImageUrl(img.imageUrl),
+                      AppNetworkImage(
+                        imageUrl: img.imageUrl,
                         fit: BoxFit.cover,
-                        placeholder: (_, __) => Container(color: Colors.grey.shade200),
-                        errorWidget: (_, __, ___) => const Icon(Icons.broken_image),
+                        defaultFallbackIcon: Icons.broken_image,
                       ),
                       if (img.isPrimary == 1)
                         Positioned(

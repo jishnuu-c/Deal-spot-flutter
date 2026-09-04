@@ -59,10 +59,8 @@ class ProductNotifier extends StateNotifier<ProductState> {
           products: [],
           details: [],
           images: [],
-          isLoading: true,
-        )) {
-    fetchProducts();
-  }
+          isLoading: false,
+        ));
 
   Future<void> fetchProducts() async {
     state = state.copyWith(isLoading: true);
@@ -211,25 +209,131 @@ class ProductNotifier extends StateNotifier<ProductState> {
     }
   }
 
-  List<ProductDetail> getProductDetails(int productId) {
-    final existing = state.details.where((d) => d.productId == productId).toList();
-    if (existing.isEmpty) {
-      _fetchProductDetailsRemote(productId);
-    }
-    return existing;
+  Future<Product?> fetchProductById(int productId) async {
+    try {
+      final response = await _apiClient.get('/products/fetch-product/$productId');
+      if (response.statusCode == 200 && response.data != null) {
+        final product = Product.fromJson(response.data as Map<String, dynamic>);
+        final list = [...state.products];
+        final idx = list.indexWhere((p) => p.id == productId);
+        if (idx != -1) {
+          list[idx] = product;
+        } else {
+          list.add(product);
+        }
+        state = state.copyWith(products: list);
+        return _populateProduct(product);
+      }
+    } catch (_) {}
+    return getProductById(productId);
   }
 
-  Future<void> _fetchProductDetailsRemote(int productId) async {
+  Future<List<ProductDetail>> fetchProductDetails(int productId) async {
     try {
       final response = await _apiClient.get('/products/get-product-details/$productId');
       if (response.statusCode == 200 && response.data != null) {
         final rawList = response.data as List;
         final list = rawList.map((e) => ProductDetail.fromJson(e as Map<String, dynamic>)).toList();
-        if (list.isNotEmpty) {
-          state = state.copyWith(details: [...state.details, ...list]);
-        }
+        final otherDetails = state.details.where((d) => d.productId != productId).toList();
+        state = state.copyWith(details: [...otherDetails, ...list]);
+        return list;
       }
     } catch (_) {}
+    return state.details.where((d) => d.productId == productId).toList();
+  }
+
+  Future<List<AttributeKey>> fetchAttributeKeys() async {
+    try {
+      final response = await _apiClient.get('/products/fetch-attribute-keys');
+      if (response.statusCode == 200 && response.data != null) {
+        final rawList = response.data as List;
+        return rawList.map((e) => AttributeKey.fromJson(e as Map<String, dynamic>)).toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  Future<bool> addAttributeKey(String attrKeyEn, String attrKeyAr) async {
+    try {
+      final response = await _apiClient.post(
+        '/products/add-key',
+        data: {
+          'attrKeyEn': attrKeyEn,
+          'attrKeyAr': attrKeyAr,
+        },
+      );
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  List<ProductDetail> getProductDetails(int productId) {
+    return state.details.where((d) => d.productId == productId).toList();
+  }
+
+  Future<bool> saveProductSpecs(int productId, List<ProductDetail> specs) async {
+    final product = getProductById(productId) ?? await fetchProductById(productId);
+    if (product == null) return false;
+
+    final payload = {
+      'id': product.id,
+      'nameEn': product.nameEn,
+      'nameAr': product.nameAr,
+      'brandId': product.brandId,
+      'categoryId': product.categoryId,
+      'sku': product.sku,
+      'barcode': product.barcode,
+      'unit': product.unit,
+      'unitSize': product.unitSize,
+      'descriptionEn': product.descriptionEn ?? '',
+      'descriptionAr': product.descriptionAr ?? '',
+      'active': product.isActive == 1,
+      'details': specs.map((s) => {
+        'attrKeyEn': s.attrKeyEn,
+        'attrKeyAr': s.attrKeyAr,
+        'attrValueEn': s.attrValueEn,
+        'attrValueAr': s.attrValueAr,
+        'sortOrder': s.sortOrder,
+      }).toList(),
+    };
+
+    try {
+      final formMap = <String, dynamic>{
+        'data': MultipartFile.fromString(
+          jsonEncode(payload),
+          contentType: MediaType.parse('application/json'),
+        ),
+      };
+
+      final formData = FormData.fromMap(formMap);
+      final response = await _apiClient.put(
+        '/products/update-product/$productId',
+        data: formData,
+      );
+      if (response.statusCode == 200) {
+        await fetchProductById(productId);
+        await fetchProductDetails(productId);
+        return true;
+      }
+    } catch (_) {
+      try {
+        final response = await _apiClient.put(
+          '/products/update-product/$productId',
+          data: {'data': payload},
+        );
+        if (response.statusCode == 200) {
+          await fetchProductById(productId);
+          await fetchProductDetails(productId);
+          return true;
+        }
+      } catch (_) {}
+    }
+
+    // Local fallback
+    final otherDetails = state.details.where((d) => d.productId != productId).toList();
+    state = state.copyWith(details: [...otherDetails, ...specs]);
+    return true;
   }
 
   List<ProductImage> getProductImages(int productId) {
@@ -494,7 +598,7 @@ class ProductNotifier extends StateNotifier<ProductState> {
 
   void deleteProductDetail(int id) {
     state = state.copyWith(
-      details: state.details.where((d) => d.productId != id).toList(),
+      details: state.details.where((d) => d.id != id).toList(),
     );
   }
 

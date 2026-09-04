@@ -7,11 +7,25 @@ import '../../../core/services/offer_repository.dart';
 import '../../../core/utils/translation_service.dart';
 import '../../../models/models.dart';
 
-class SavedOffersScreen extends ConsumerWidget {
+class SavedOffersScreen extends ConsumerStatefulWidget {
   const SavedOffersScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SavedOffersScreen> createState() => _SavedOffersScreenState();
+}
+
+class _SavedOffersScreenState extends ConsumerState<SavedOffersScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(offerRepositoryProvider.notifier).fetchOffers();
+      ref.read(offerRepositoryProvider.notifier).fetchSavedOffers();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final tr = ref.watch(localizationsProvider);
     final isRtl = ref.watch(translationProvider) == AppLanguage.ar;
     final isDark = Theme.of(context).brightness == Brightness.dark;

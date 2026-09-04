@@ -26,6 +26,12 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen> with Sing
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(storeRepositoryProvider.notifier).fetchStoreById(widget.storeId);
+      ref.read(storeRepositoryProvider.notifier).fetchBranchesForStore(widget.storeId);
+      ref.read(offerRepositoryProvider.notifier).fetchOffers(storeId: widget.storeId);
+      ref.read(flyerRepositoryProvider.notifier).fetchFlyers(storeId: widget.storeId);
+    });
   }
 
   @override

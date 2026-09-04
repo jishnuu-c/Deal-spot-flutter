@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/services/city_repository.dart';
 import '../../../core/services/flyer_repository.dart';
+import '../../../core/services/store_repository.dart';
 import '../../../core/utils/translation_service.dart';
 import '../../../models/models.dart';
 
@@ -18,6 +19,16 @@ class FlyerListScreen extends ConsumerStatefulWidget {
 class _FlyerListScreenState extends ConsumerState<FlyerListScreen> {
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(cityRepositoryProvider.notifier).fetchCities();
+      ref.read(flyerRepositoryProvider.notifier).fetchFlyers();
+      ref.read(storeRepositoryProvider.notifier).fetchStores();
+    });
+  }
 
   @override
   void dispose() {

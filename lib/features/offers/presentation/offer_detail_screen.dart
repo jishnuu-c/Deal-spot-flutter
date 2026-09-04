@@ -25,6 +25,24 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
   int _activeImageIndex = 0;
   bool _copiedCoupon = false;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final offer = await ref.read(offerRepositoryProvider.notifier).fetchOfferById(widget.offerId);
+      if (offer != null) {
+        if (offer.productId != null) {
+          ref.read(productRepositoryProvider.notifier).fetchProductById(offer.productId!);
+          ref.read(productRepositoryProvider.notifier).fetchProductDetails(offer.productId!);
+        }
+        if (offer.storeId != null) {
+          ref.read(storeRepositoryProvider.notifier).fetchStoreById(offer.storeId);
+          ref.read(couponRepositoryProvider.notifier).fetchCoupons(storeId: offer.storeId);
+        }
+      }
+    });
+  }
+
   void _openLightbox(BuildContext context, List<String> imageUrls, int initialIndex) {
     showDialog(
       context: context,

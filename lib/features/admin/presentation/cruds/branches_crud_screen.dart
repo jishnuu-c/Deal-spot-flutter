@@ -27,6 +27,16 @@ class _BranchesCrudScreenState extends ConsumerState<BranchesCrudScreen> {
   String _selectedStatusFilter = ''; // '', 'active', 'inactive', '247'
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(cityRepositoryProvider.notifier).fetchCities();
+      ref.read(storeRepositoryProvider.notifier).fetchStoreById(widget.storeId);
+      ref.read(storeRepositoryProvider.notifier).fetchBranchesForStore(widget.storeId);
+    });
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     _scrollController.dispose();

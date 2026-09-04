@@ -414,10 +414,12 @@ class _AdminLayoutState extends ConsumerState<AdminLayout> {
                         child: InkWell(
                           borderRadius: BorderRadius.circular(8),
                           onTap: () {
-                            if (!isDesktop) {
-                              Navigator.of(context).pop();
+                            if (!isDesktop && (_scaffoldKey.currentState?.isDrawerOpen ?? false)) {
+                              _scaffoldKey.currentState?.closeDrawer();
                             }
-                            context.go(route);
+                            if (location != route) {
+                              context.go(route);
+                            }
                           },
                           hoverColor: const Color(0xFF1E293B),
                           child: Padding(

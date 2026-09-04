@@ -6,10 +6,25 @@ import '../../../../core/services/store_repository.dart';
 import '../../../../core/services/city_repository.dart';
 import '../../../../models/models.dart';
 
-class FlyersCrudScreen extends ConsumerWidget {
+class FlyersCrudScreen extends ConsumerStatefulWidget {
   const FlyersCrudScreen({super.key});
 
-  void _showForm(BuildContext context, WidgetRef ref, [Flyer? flyer]) {
+  @override
+  ConsumerState<FlyersCrudScreen> createState() => _FlyersCrudScreenState();
+}
+
+class _FlyersCrudScreenState extends ConsumerState<FlyersCrudScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(flyerRepositoryProvider.notifier).fetchFlyers();
+      ref.read(storeRepositoryProvider.notifier).fetchStores();
+      ref.read(cityRepositoryProvider.notifier).fetchCities();
+    });
+  }
+
+  void _showForm(BuildContext context, [Flyer? flyer]) {
     final titleEnCtrl = TextEditingController(text: flyer?.titleEn);
     final titleArCtrl = TextEditingController(text: flyer?.titleAr);
     final coverCtrl = TextEditingController(text: flyer?.coverImageUrl ?? 'https://images.unsplash.com/photo-1578916171728-46686eac8d58?w=300&auto=format&fit=crop&q=60');
@@ -81,15 +96,15 @@ class FlyersCrudScreen extends ConsumerWidget {
                 ElevatedButton(
                   onPressed: () {
                     if (selectedStoreId == null || selectedCityId == null) return;
-                    final pages = int.tryParse(pagesCountCtrl.text) ?? 1;
+                    final totalP = int.tryParse(pagesCountCtrl.text) ?? 1;
 
                     if (flyer == null) {
                       ref.read(flyerRepositoryProvider.notifier).createFlyer(
                             titleEnCtrl.text,
                             titleArCtrl.text,
                             coverCtrl.text,
-                            pdfCtrl.text.isEmpty ? null : pdfCtrl.text,
-                            pages,
+                            pdfCtrl.text,
+                            totalP,
                             fromCtrl.text,
                             untilCtrl.text,
                             selectedStoreId!,
@@ -102,8 +117,8 @@ class FlyersCrudScreen extends ConsumerWidget {
                             titleEnCtrl.text,
                             titleArCtrl.text,
                             coverCtrl.text,
-                            pdfCtrl.text.isEmpty ? null : pdfCtrl.text,
-                            pages,
+                            pdfCtrl.text,
+                            totalP,
                             fromCtrl.text,
                             untilCtrl.text,
                             selectedStoreId!,
@@ -124,7 +139,7 @@ class FlyersCrudScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final list = ref.watch(flyerRepositoryProvider.notifier).getFlyers();
 
     return Scaffold(
@@ -133,7 +148,7 @@ class FlyersCrudScreen extends ConsumerWidget {
         actions: [
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white),
-            onPressed: () => _showForm(context, ref),
+            onPressed: () => _showForm(context),
             icon: const Icon(Icons.add),
             label: const Text('Add Flyer'),
           ),
@@ -160,7 +175,7 @@ class FlyersCrudScreen extends ConsumerWidget {
                   label: const Text('Pages', style: TextStyle(fontSize: 11)),
                 ),
                 const SizedBox(width: 8),
-                IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: () => _showForm(context, ref, flyer)),
+                IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: () => _showForm(context, flyer)),
                 IconButton(
                   icon: const Icon(Icons.delete, color: Colors.red),
                   onPressed: () {
