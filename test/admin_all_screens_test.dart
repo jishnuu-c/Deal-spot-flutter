@@ -12,8 +12,9 @@ import 'package:dealspot_flutter/core/services/city_repository.dart';
 import 'package:dealspot_flutter/core/services/category_repository.dart';
 import 'package:dealspot_flutter/core/services/product_repository.dart';
 import 'package:dealspot_flutter/core/services/brand_repository.dart';
+import 'package:dealspot_flutter/features/admin/presentation/cruds/offers_crud_screen.dart';
+import 'package:dealspot_flutter/core/services/offer_repository.dart';
 import 'package:dealspot_flutter/models/models.dart';
-import 'package:dealspot_flutter/models/brand.dart';
 
 void main() {
   setUp(() {
@@ -214,9 +215,22 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Add New Product'), findsOneWidget);
-    expect(find.text('Product Names'), findsOneWidget);
+    expect(find.text('Brand'), findsOneWidget);
     expect(find.text('Codes & Measurements'), findsOneWidget);
-    expect(find.text('Active Product'), findsOneWidget);
+    expect(find.text('Active Product Status'), findsOneWidget);
+
+    // Close the modal
+    await tester.tap(find.byIcon(Icons.close));
+    await tester.pumpAndSettle();
+
+    // Tap Edit icon button on the product card
+    await tester.tap(find.byIcon(Icons.edit_outlined));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Edit Product'), findsOneWidget);
+    expect(find.text('Brand'), findsOneWidget);
+    expect(find.text('Codes & Measurements'), findsOneWidget);
+    expect(find.text('Active Product Status'), findsOneWidget);
   });
 
   testWidgets('Test BrandsCrudScreen renders and opens edit modal properly', (WidgetTester tester) async {
@@ -270,7 +284,8 @@ void main() {
     expect(find.text('Active Partner'), findsOneWidget);
     expect(find.text('Featured Brand'), findsOneWidget);
   });
-  testWidgets('Test AdminProductDetailScreen renders properly', (WidgetTester tester) async {
+
+  testWidgets('Test AdminProductDetailScreen renders and toggles edit mode properly', (WidgetTester tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -332,6 +347,15 @@ void main() {
     expect(find.byType(AdminProductDetailScreen), findsOneWidget);
     expect(find.text('Fresh Milk 1L'), findsWidgets);
     expect(find.text('General Product Information'), findsOneWidget);
+
+    // Tap Edit Product button
+    await tester.tap(find.text('Edit Product'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Edit Product Catalogue Entry'), findsOneWidget);
+    expect(find.text('Brand Partner *'), findsOneWidget);
+    expect(find.text('Codes & Measurements'), findsOneWidget);
+    expect(find.text('Active Product Status'), findsOneWidget);
   });
 
   testWidgets('Test ProductSpecsCrudScreen renders properly', (WidgetTester tester) async {
@@ -386,8 +410,173 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(ProductSpecsCrudScreen), findsOneWidget);
     expect(find.text('Technical Specifications'), findsOneWidget);
-    expect(find.text('Storage'), findsOneWidget);
+    expect(find.text('Back'), findsOneWidget);
   });
+
+  testWidgets('Test AdminProductDetailScreen edit mode and save flow', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1200, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final product = Product(
+      id: 1,
+      nameEn: 'Fresh Milk 1L',
+      nameAr: 'حليب طازج 1 لتر',
+      brand: 'Almarai',
+      brandAr: 'المراعي',
+      sku: 'ALM-1L',
+      barcode: '6281007010014',
+      primaryImageUrl: '',
+      unit: 'L',
+      unitSize: 1.0,
+      categoryId: 1,
+      isActive: 1,
+    );
+
+    final category = Category(
+      id: 1,
+      nameEn: 'Dairy',
+      nameAr: 'ألبان',
+      iconSlug: 'category',
+      sortOrder: 1,
+      isActive: 1,
+    );
+
+    final brand = Brand(
+      id: 1,
+      nameEn: 'Almarai',
+      nameAr: 'المراعي',
+      logoUrl: '',
+      active: true,
+      categories: [],
+    );
+
+    final container = ProviderContainer(
+      overrides: [
+        productRepositoryProvider.overrideWith((ref) => MockProductNotifier([product])),
+        categoryRepositoryProvider.overrideWith((ref) => MockCategoryNotifier([category])),
+        brandRepositoryProvider.overrideWith((ref) => MockBrandNotifier([brand])),
+      ],
+    );
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          home: Scaffold(
+            body: AdminProductDetailScreen(productId: 1),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    expect(find.text('Edit Product'), findsOneWidget);
+
+    // Enter edit mode
+    await tester.tap(find.text('Edit Product'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Save Changes'), findsOneWidget);
+    expect(find.text('Cancel Edit'), findsOneWidget);
+    expect(find.text('Main Category *'), findsOneWidget);
+  });
+
+  testWidgets('Test OffersCrudScreen renders and opens dialog properly', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1200, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final offer = Offer(
+      id: 1,
+      storeId: 1,
+      categoryId: 1,
+      cityId: 1,
+      titleEn: 'Super Deal 50% Off',
+      titleAr: 'عرض رائع خصم 50%',
+      originalPrice: 100.0,
+      offerPrice: 50.0,
+      discountPct: 50.0,
+      badgeType: 'FLASH',
+      validFrom: '2026-07-01',
+      validUntil: '2026-07-31',
+      isFeatured: 1,
+      isFlash: 1,
+      isActive: 1,
+      viewCount: 10,
+      saveCount: 2,
+    );
+
+    final store = Store(id: 1, nameEn: 'Panda', nameAr: 'بندة', cityId: 1, categoryId: 1, logoUrl: '', isActive: 1, isVerified: 1);
+    final city = City(id: 1, nameEn: 'Riyadh', nameAr: 'الرياض', regionCode: 'RUH', latitude: 24.7, longitude: 46.7, isActive: 1);
+    final category = Category(id: 1, nameEn: 'Dairy', nameAr: 'ألبان', iconSlug: 'category', sortOrder: 1, isActive: 1);
+
+    final container = ProviderContainer(
+      overrides: [
+        offerRepositoryProvider.overrideWith((ref) => MockOfferNotifier([offer])),
+        storeRepositoryProvider.overrideWith((ref) => MockStoreNotifier([store])),
+        cityRepositoryProvider.overrideWith((ref) => MockCityNotifier([city])),
+        categoryRepositoryProvider.overrideWith((ref) => MockCategoryNotifier([category])),
+        productRepositoryProvider.overrideWith((ref) => MockProductNotifier([])),
+      ],
+    );
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          home: Scaffold(
+            body: OffersCrudScreen(),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    expect(find.byType(OffersCrudScreen), findsOneWidget);
+    expect(find.text('Super Deal 50% Off'), findsOneWidget);
+
+    // Open Edit Offer Form
+    await tester.tap(find.byIcon(Icons.edit_outlined));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Edit Promotion Deal'), findsOneWidget);
+    expect(find.text('Offer Title (EN) *'), findsOneWidget);
+  });
+}
+
+class MockOfferNotifier extends StateNotifier<OfferState> implements OfferNotifier {
+  MockOfferNotifier(List<Offer> initialOffers)
+      : super(OfferState(offers: initialOffers, savedOfferIds: const [], images: const [], isLoading: false));
+
+  @override
+  Future<void> fetchOffers({int? storeId, int? cityId, bool? includeExpired}) async {}
+
+  @override
+  Future<PagedOfferResult> getPagedOffers({
+    int page = 0,
+    int size = 20,
+    String? search,
+    int? categoryId,
+    int? storeId,
+    int? cityId,
+    String? badgeType,
+    bool? active,
+    String sortBy = 'createdAt',
+    String direction = 'desc',
+  }) async {
+    return PagedOfferResult(
+      content: state.offers,
+      totalElements: state.offers.length,
+      totalPages: 1,
+      number: page,
+    );
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class MockStoreNotifier extends StateNotifier<StoreState> implements StoreNotifier {

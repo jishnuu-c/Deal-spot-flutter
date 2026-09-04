@@ -421,10 +421,16 @@ class _ProductSpecsCrudScreenState extends ConsumerState<ProductSpecsCrudScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         OutlinedButton.icon(
-                          onPressed: () => context.go('/admin/products/${widget.productId}/details'),
+                          onPressed: () {
+                            if (context.canPop()) {
+                              context.pop();
+                            } else {
+                              context.go('/admin/products');
+                            }
+                          },
                           icon: const Icon(Icons.arrow_back, size: 15),
                           label: Text(
-                            isRtl ? 'العودة لتفاصيل المنتج' : 'Back to Product Details',
+                            isRtl ? 'العودة' : 'Back',
                             style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
                           ),
                           style: OutlinedButton.styleFrom(

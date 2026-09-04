@@ -195,7 +195,13 @@ class _BranchesCrudScreenState extends ConsumerState<BranchesCrudScreen> {
                 color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
                 borderRadius: BorderRadius.circular(8),
                 child: InkWell(
-                  onTap: () => context.go('/admin/stores'),
+                  onTap: () {
+                    if (context.canPop()) {
+                      context.pop();
+                    } else {
+                      context.go('/admin/stores');
+                    }
+                  },
                   borderRadius: BorderRadius.circular(8),
                   child: Container(
                     width: 38,

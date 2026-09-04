@@ -14,6 +14,7 @@ import '../../../../models/models.dart';
 import '../../../../models/brand.dart';
 import '../../../../core/widgets/app_network_image.dart';
 import '../widgets/crud_loading_widget.dart';
+import '../widgets/searchable_brand_selector.dart';
 
 class ProductsCrudScreen extends ConsumerStatefulWidget {
   const ProductsCrudScreen({super.key});
@@ -1557,7 +1558,10 @@ class _ProductsCrudScreenState extends ConsumerState<ProductsCrudScreen> {
 
     int? selectedBrandId = product?.brandId;
     if (selectedBrandId == null && product != null && product.brand.isNotEmpty) {
-      final b = brands.where((b) => b.nameEn.toLowerCase() == product.brand.toLowerCase()).firstOrNull;
+      final b = brands.where((b) =>
+          b.nameEn.toLowerCase() == product.brand.toLowerCase() ||
+          (product.brandAr.isNotEmpty && b.nameAr == product.brandAr) ||
+          b.nameEn.toLowerCase() == product.brandAr.toLowerCase()).firstOrNull;
       if (b != null) selectedBrandId = b.id;
     }
 
@@ -1577,9 +1581,22 @@ class _ProductsCrudScreenState extends ConsumerState<ProductsCrudScreen> {
       }
     }
 
-    String selectedUnit = product?.unit ?? 'EACH';
-    if (!unitOptions.any((u) => u['id'] == selectedUnit)) {
-      selectedUnit = 'EACH';
+    String selectedUnit = 'EACH';
+    if (product != null && product.unit.isNotEmpty) {
+      final rawUnit = product.unit.toUpperCase().trim();
+      if (rawUnit == 'L' || rawUnit == 'LITER' || rawUnit == 'LITERS' || rawUnit == 'LITRES') {
+        selectedUnit = 'LITRE';
+      } else if (rawUnit == 'PIECE' || rawUnit == 'PIECES' || rawUnit == 'PCS' || rawUnit == 'PC') {
+        selectedUnit = 'EACH';
+      } else if (rawUnit == 'G' || rawUnit == 'GRAMS') {
+        selectedUnit = 'GRAM';
+      } else if (rawUnit == 'KG' || rawUnit == 'KGS' || rawUnit == 'KILOGRAMS') {
+        selectedUnit = 'KG';
+      } else if (rawUnit == 'ML' || rawUnit == 'MILLILITERS') {
+        selectedUnit = 'ML';
+      } else if (unitOptions.any((u) => u['id'] == rawUnit)) {
+        selectedUnit = rawUnit;
+      }
     }
 
     bool isActive = product != null ? product.isActive == 1 : true;
@@ -1594,24 +1611,56 @@ class _ProductsCrudScreenState extends ConsumerState<ProductsCrudScreen> {
       barrierDismissible: false,
       builder: (ctx) => StatefulBuilder(
         builder: (dialogCtx, setDialogState) {
-          final mainCategories = allCategories.where((c) => c.parentId == null).toList();
+          final liveCategories = ref.watch(categoryRepositoryProvider).isNotEmpty
+              ? ref.watch(categoryRepositoryProvider)
+              : allCategories;
+          final liveBrands = ref.watch(brandRepositoryProvider).brands.isNotEmpty
+              ? ref.watch(brandRepositoryProvider).brands
+              : brands;
+
+          // Resolve brand / category fallback if initially empty
+          if (product != null) {
+            if (selectedBrandId == null && product.brand.isNotEmpty) {
+              final b = liveBrands.where((b) =>
+                  b.nameEn.toLowerCase() == product.brand.toLowerCase() ||
+                  (product.brandAr.isNotEmpty && b.nameAr == product.brandAr) ||
+                  b.nameEn.toLowerCase() == product.brandAr.toLowerCase()).firstOrNull;
+              if (b != null) selectedBrandId = b.id;
+            }
+            if (selectedMainCatId == null && liveCategories.isNotEmpty) {
+              final cat = liveCategories.where((c) => c.id == product.categoryId).firstOrNull;
+              if (cat != null) {
+                if (cat.parentId != null) {
+                  selectedMainCatId = cat.parentId;
+                  selectedSubCatId = cat.id;
+                } else {
+                  selectedMainCatId = cat.id;
+                }
+              }
+            }
+          }
+
+          final mainCategories = liveCategories.where((c) => c.parentId == null).toList();
           final availableSubcategories = selectedMainCatId != null
-              ? allCategories.where((c) => c.parentId == selectedMainCatId).toList()
+              ? liveCategories.where((c) => c.parentId == selectedMainCatId).toList()
               : <Category>[];
 
-          final selectedMainCatObj = allCategories.where((c) => c.id == selectedMainCatId).firstOrNull;
-          final selectedSubCatObj = allCategories.where((c) => c.id == selectedSubCatId).firstOrNull;
+          final selectedMainCatObj = liveCategories.where((c) => c.id == selectedMainCatId).firstOrNull;
+          final selectedSubCatObj = liveCategories.where((c) => c.id == selectedSubCatId).firstOrNull;
 
-          String assignedCategoryName = '';
+          String assignedCategoryPath = '';
           if (selectedMainCatObj != null) {
             final mainName = isRtl ? selectedMainCatObj.nameAr : selectedMainCatObj.nameEn;
             if (selectedSubCatObj != null) {
               final subName = isRtl ? selectedSubCatObj.nameAr : selectedSubCatObj.nameEn;
-              assignedCategoryName = '$mainName ➔ $subName';
+              assignedCategoryPath = '$mainName ➔ $subName';
             } else {
-              assignedCategoryName = mainName;
+              assignedCategoryPath = mainName;
             }
           }
+
+          final screenWidth = MediaQuery.of(context).size.width;
+          final dialogWidth = screenWidth > 640 ? 580.0 : double.maxFinite;
 
           return Directionality(
             textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
@@ -1624,13 +1673,20 @@ class _ProductsCrudScreenState extends ConsumerState<ProductsCrudScreen> {
               title: Row(
                 children: [
                   Container(
-                    width: 38,
-                    height: 38,
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFDCFCE7),
+                      color: isDark ? const Color(0xFF0F172A) : const Color(0xFFDCFCE7),
                       borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: const Color(0xFF16A34A).withValues(alpha: 0.3),
+                      ),
                     ),
-                    child: const Icon(Icons.inventory_2, color: Color(0xFF16A34A), size: 22),
+                    child: Icon(
+                      isEditing ? Icons.edit_note : Icons.add_box,
+                      color: const Color(0xFF16A34A),
+                      size: 24,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -1639,7 +1695,7 @@ class _ProductsCrudScreenState extends ConsumerState<ProductsCrudScreen> {
                       children: [
                         Text(
                           isEditing
-                              ? (isRtl ? 'تعديل بيانات المنتج' : 'Edit Product')
+                              ? (isRtl ? 'تعديل المنتج' : 'Edit Product')
                               : (isRtl ? 'إضافة منتج جديد' : 'Add New Product'),
                           style: TextStyle(
                             fontSize: 16,
@@ -1647,10 +1703,11 @@ class _ProductsCrudScreenState extends ConsumerState<ProductsCrudScreen> {
                             color: isDark ? Colors.white : const Color(0xFF0F172A),
                           ),
                         ),
+                        const SizedBox(height: 1),
                         Text(
                           isRtl
-                              ? 'قم بتعبئة تفاصيل المنتج الرئيسي لإضافته إلى دليل العروض'
-                              : 'Fill out master product details to populate deals catalog',
+                              ? 'أدخل تفاصيل المنتج والقسم والمواصفات'
+                              : 'Fill in product details, category, and specs',
                           style: TextStyle(
                             fontSize: 11,
                             color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
@@ -1666,229 +1723,269 @@ class _ProductsCrudScreenState extends ConsumerState<ProductsCrudScreen> {
                 ],
               ),
               content: SizedBox(
-                width: 600,
+                width: dialogWidth,
                 child: SingleChildScrollView(
                   child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // SECTION 1: BRAND PARTNER
+                      // ==================== SECTION 1: BRAND ====================
                       _buildSectionHeader(
                         icon: Icons.storefront,
-                        title: isRtl ? 'الماركة / الشريك التجاري' : 'Brand Partner',
+                        title: isRtl ? 'الماركة' : 'Brand',
                         isDark: isDark,
                       ),
                       const SizedBox(height: 8),
-                      _buildFieldLabel(isRtl ? 'اختر الماركة التجارية *' : 'Select Brand Partner *', isDark),
+                      _buildFieldLabel(isRtl ? 'الماركة *' : 'Brand *', isDark),
                       const SizedBox(height: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF0F172A) : Colors.white,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
-                          ),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<int?>(
-                            value: selectedBrandId,
-                            isExpanded: true,
-                            dropdownColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-                            hint: Text(
-                              isRtl ? '-- اختر الماركة --' : '-- Choose Brand --',
-                              style: TextStyle(fontSize: 12, color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8)),
-                            ),
-                            items: brands.map((b) {
-                              final logo = AppConfig.normalizeImageUrl(b.logoUrl);
-                              return DropdownMenuItem<int?>(
-                                value: b.id,
-                                child: Row(
-                                  children: [
-                                    if (logo.isNotEmpty) ...[
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(4),
-                                        child: Image.network(
-                                          logo,
-                                          width: 20,
-                                          height: 20,
-                                          errorBuilder: (_, __, ___) => const Icon(Icons.storefront, size: 16),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                    ],
-                                    Expanded(
-                                      child: Text(
-                                        isRtl ? (b.nameAr.isNotEmpty ? b.nameAr : b.nameEn) : b.nameEn,
-                                        style: TextStyle(fontSize: 12, color: isDark ? Colors.white : const Color(0xFF0F172A)),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }).toList(),
-                            onChanged: (val) => setDialogState(() => selectedBrandId = val),
-                          ),
-                        ),
+                      SearchableBrandSelector(
+                        selectedBrandId: selectedBrandId,
+                        brands: liveBrands,
+                        onChanged: (val) => setDialogState(() => selectedBrandId = val),
+                        isRtl: isRtl,
+                        isDark: isDark,
+                        placeholder: isRtl ? '-- اختر الماركة --' : '-- Select Brand --',
+                        isRequired: true,
                       ),
                       const SizedBox(height: 16),
 
-                      // SECTION 2: PRODUCT NAMES
+                      // ==================== SECTION 2: PRODUCT NAMES ====================
                       _buildSectionHeader(
-                        icon: Icons.title,
+                        icon: Icons.badge_outlined,
                         title: isRtl ? 'اسم المنتج' : 'Product Names',
                         isDark: isDark,
                       ),
                       const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final isNarrow = constraints.maxWidth < 420;
+                          final enField = Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildFieldLabel(isRtl ? 'الاسم (الإنجليزية) *' : 'Name (English) *', isDark),
+                              const SizedBox(height: 4),
+                              _buildTextField(
+                                nameEnCtrl,
+                                'e.g. Almarai Fresh Milk 2L',
+                                isDark,
+                              ),
+                            ],
+                          );
+
+                          final arField = Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildFieldLabel(isRtl ? 'الاسم (العربية) *' : 'Name (Arabic) *', isDark),
+                              const SizedBox(height: 4),
+                              _buildTextField(
+                                nameArCtrl,
+                                'مثال: حليب المراعي طازج 2 لتر',
+                                isDark,
+                                isRtl: true,
+                              ),
+                            ],
+                          );
+
+                          if (isNarrow) {
+                            return Column(
                               children: [
-                                _buildFieldLabel(isRtl ? 'الاسم بالإنجليزية *' : 'Name (English) *', isDark),
-                                const SizedBox(height: 4),
-                                _buildTextField(
-                                  nameEnCtrl,
-                                  isRtl ? 'مثال: Fresh Milk 1L' : 'e.g. Fresh Milk 1L',
-                                  isDark,
-                                ),
+                                enField,
+                                const SizedBox(height: 10),
+                                arField,
                               ],
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildFieldLabel(isRtl ? 'الاسم بالعربية *' : 'Name (Arabic) *', isDark),
-                                const SizedBox(height: 4),
-                                _buildTextField(
-                                  nameArCtrl,
-                                  isRtl ? 'مثال: حليب طازج 1 لتر' : 'e.g. حليب طازج 1 لتر',
-                                  isDark,
-                                  isRtl: true,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                            );
+                          }
+
+                          return Row(
+                            children: [
+                              Expanded(child: enField),
+                              const SizedBox(width: 10),
+                              Expanded(child: arField),
+                            ],
+                          );
+                        },
                       ),
                       const SizedBox(height: 16),
 
-                      // SECTION 3: CATEGORY HIERARCHY
+                      // ==================== SECTION 3: CATEGORY HIERARCHY ====================
                       _buildSectionHeader(
-                        icon: Icons.category,
-                        title: isRtl ? 'تصنيف القسم' : 'Category Classification',
+                        icon: Icons.account_tree_outlined,
+                        title: isRtl ? 'القسم' : 'Category',
                         isDark: isDark,
                       ),
                       const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildFieldLabel(isRtl ? '1. القسم الرئيسي *' : '1. Main Category *', isDark),
-                                const SizedBox(height: 4),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                                  decoration: BoxDecoration(
-                                    color: isDark ? const Color(0xFF0F172A) : Colors.white,
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
-                                    ),
-                                  ),
-                                  child: DropdownButtonHideUnderline(
-                                    child: DropdownButton<int?>(
-                                      value: selectedMainCatId,
-                                      isExpanded: true,
-                                      dropdownColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-                                      hint: Text(
-                                        isRtl ? '-- اختر القسم الرئيسي --' : '-- Choose Main --',
-                                        style: TextStyle(fontSize: 11.5, color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8)),
-                                      ),
-                                      items: mainCategories.map((c) => DropdownMenuItem<int?>(
-                                            value: c.id,
-                                            child: Text(
-                                              isRtl ? c.nameAr : c.nameEn,
-                                              style: TextStyle(fontSize: 12, color: isDark ? Colors.white : const Color(0xFF0F172A)),
-                                            ),
-                                          )).toList(),
-                                      onChanged: (val) {
-                                        setDialogState(() {
-                                          selectedMainCatId = val;
-                                          selectedSubCatId = null;
-                                        });
-                                      },
-                                    ),
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final isNarrow = constraints.maxWidth < 420;
+
+                          final step1Widget = Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  _buildStepBadge('1'),
+                                  const SizedBox(width: 6),
+                                  _buildFieldLabel(isRtl ? 'القسم الرئيسي *' : 'Main Category *', isDark),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Container(
+                                height: 42,
+                                padding: const EdgeInsets.symmetric(horizontal: 10),
+                                decoration: BoxDecoration(
+                                  color: isDark ? const Color(0xFF0F172A) : Colors.white,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
                                   ),
                                 ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildFieldLabel(isRtl ? '2. القسم الفرعي' : '2. Subcategory', isDark),
-                                const SizedBox(height: 4),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                                  decoration: BoxDecoration(
-                                    color: isDark ? const Color(0xFF0F172A) : Colors.white,
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
-                                    ),
-                                  ),
-                                  child: DropdownButtonHideUnderline(
-                                    child: DropdownButton<int?>(
-                                      value: selectedSubCatId,
-                                      isExpanded: true,
-                                      dropdownColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-                                      hint: Text(
-                                        availableSubcategories.isEmpty
-                                            ? (isRtl ? '-- لا توجد أقسام فرعية --' : '-- No Subcategories --')
-                                            : (isRtl ? '-- اختياري --' : '-- Optional Sub --'),
-                                        style: TextStyle(fontSize: 11.5, color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8)),
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<int?>(
+                                    value: (selectedMainCatId != null && mainCategories.any((c) => c.id == selectedMainCatId))
+                                        ? selectedMainCatId
+                                        : null,
+                                    isExpanded: true,
+                                    dropdownColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                    hint: Text(
+                                      isRtl ? '-- اختر القسم الرئيسي --' : '-- Select Main Category --',
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
                                       ),
-                                      items: availableSubcategories.map((c) => DropdownMenuItem<int?>(
-                                            value: c.id,
-                                            child: Text(
-                                              isRtl ? c.nameAr : c.nameEn,
-                                              style: TextStyle(fontSize: 12, color: isDark ? Colors.white : const Color(0xFF0F172A)),
-                                            ),
-                                          )).toList(),
-                                      onChanged: availableSubcategories.isEmpty
-                                          ? null
-                                          : (val) => setDialogState(() => selectedSubCatId = val),
                                     ),
+                                    items: mainCategories.map((c) => DropdownMenuItem<int?>(
+                                          value: c.id,
+                                          child: Text(
+                                            isRtl ? c.nameAr : c.nameEn,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                            ),
+                                          ),
+                                        )).toList(),
+                                    onChanged: (val) {
+                                      setDialogState(() {
+                                        selectedMainCatId = val;
+                                        selectedSubCatId = null;
+                                      });
+                                    },
                                   ),
                                 ),
+                              ),
+                            ],
+                          );
+
+                          final step2Widget = Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  _buildStepBadge('2'),
+                                  const SizedBox(width: 6),
+                                  _buildFieldLabel(isRtl ? 'القسم الفرعي' : 'Subcategory', isDark),
+                                  if (selectedMainCatId != null) ...[
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFEDE9FE),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Text(
+                                        '${availableSubcategories.length}',
+                                        style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, color: Color(0xFF7C3AED)),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Container(
+                                height: 42,
+                                padding: const EdgeInsets.symmetric(horizontal: 10),
+                                decoration: BoxDecoration(
+                                  color: isDark ? const Color(0xFF0F172A) : Colors.white,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                                  ),
+                                ),
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<int?>(
+                                    value: (selectedSubCatId != null && availableSubcategories.any((c) => c.id == selectedSubCatId))
+                                        ? selectedSubCatId
+                                        : null,
+                                    isExpanded: true,
+                                    dropdownColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                    hint: Text(
+                                      availableSubcategories.isEmpty
+                                          ? (isRtl ? '-- لا توجد أقسام فرعية --' : '-- No Subcategories --')
+                                          : (isRtl ? '-- قسم فرعي اختياري --' : '-- Optional Subcategory --'),
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                                      ),
+                                    ),
+                                    items: availableSubcategories.map((c) => DropdownMenuItem<int?>(
+                                          value: c.id,
+                                          child: Text(
+                                            isRtl ? c.nameAr : c.nameEn,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                            ),
+                                          ),
+                                        )).toList(),
+                                    onChanged: (selectedMainCatId == null || availableSubcategories.isEmpty)
+                                        ? null
+                                        : (val) => setDialogState(() => selectedSubCatId = val),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+
+                          if (isNarrow) {
+                            return Column(
+                              children: [
+                                step1Widget,
+                                const SizedBox(height: 10),
+                                step2Widget,
                               ],
-                            ),
-                          ),
-                        ],
+                            );
+                          }
+
+                          return Row(
+                            children: [
+                              Expanded(child: step1Widget),
+                              const SizedBox(width: 10),
+                              Expanded(child: step2Widget),
+                            ],
+                          );
+                        },
                       ),
-                      if (assignedCategoryName.isNotEmpty) ...[
+                      if (assignedCategoryPath.isNotEmpty) ...[
                         const SizedBox(height: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                           decoration: BoxDecoration(
                             color: const Color(0xFFDCFCE7),
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: const Color(0xFF16A34A).withValues(alpha: 0.3)),
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.check_circle, size: 14, color: Color(0xFF16A34A)),
+                              const Icon(Icons.verified, size: 15, color: Color(0xFF16A34A)),
+                              const SizedBox(width: 6),
+                              Text(
+                                isRtl ? 'القسم:' : 'Assigned:',
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF166534)),
+                              ),
                               const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
-                                  '${isRtl ? "القسم المخصص: " : "Assigned: "}$assignedCategoryName',
-                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF166534)),
+                                  assignedCategoryPath,
+                                  style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Color(0xFF15803D)),
                                 ),
                               ),
                             ],
@@ -1897,109 +1994,145 @@ class _ProductsCrudScreenState extends ConsumerState<ProductsCrudScreen> {
                       ],
                       const SizedBox(height: 16),
 
-                      // SECTION 4: CODES & MEASUREMENTS
+                      // ==================== SECTION 4: CODES & MEASUREMENTS ====================
                       _buildSectionHeader(
-                        icon: Icons.qr_code,
-                        title: isRtl ? 'الرموز ووحدات القياس' : 'Codes & Measurements',
+                        icon: Icons.qr_code_2_outlined,
+                        title: isRtl ? 'الرموز والمقاسات' : 'Codes & Measurements',
                         isDark: isDark,
                       ),
                       const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final isNarrow = constraints.maxWidth < 420;
+
+                          final skuField = Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildFieldLabel(isRtl ? 'رمز المنتج (SKU)' : 'SKU', isDark),
+                              const SizedBox(height: 4),
+                              _buildTextField(
+                                skuCtrl,
+                                'e.g. MILK-ALM-2L',
+                                isDark,
+                                isMonospace: true,
+                              ),
+                            ],
+                          );
+
+                          final barcodeField = Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildFieldLabel(isRtl ? 'الباركود' : 'Barcode (EAN/UPC)', isDark),
+                              const SizedBox(height: 4),
+                              _buildTextField(
+                                barcodeCtrl,
+                                'e.g. 6281007010012',
+                                isDark,
+                                isMonospace: true,
+                              ),
+                            ],
+                          );
+
+                          if (isNarrow) {
+                            return Column(
                               children: [
-                                _buildFieldLabel(isRtl ? 'رمز المنتج (SKU)' : 'Product SKU', isDark),
-                                const SizedBox(height: 4),
-                                _buildTextField(
-                                  skuCtrl,
-                                  'e.g. MILK-1L',
-                                  isDark,
-                                  isMonospace: true,
-                                ),
+                                skuField,
+                                const SizedBox(height: 10),
+                                barcodeField,
                               ],
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildFieldLabel(isRtl ? 'الباركود (UPC/EAN)' : 'Barcode (UPC/EAN)', isDark),
-                                const SizedBox(height: 4),
-                                _buildTextField(
-                                  barcodeCtrl,
-                                  '6281007010014',
-                                  isDark,
-                                  isMonospace: true,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                            );
+                          }
+
+                          return Row(
+                            children: [
+                              Expanded(child: skuField),
+                              const SizedBox(width: 10),
+                              Expanded(child: barcodeField),
+                            ],
+                          );
+                        },
                       ),
                       const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildFieldLabel(isRtl ? 'وحدة القياس *' : 'Measurement Unit *', isDark),
-                                const SizedBox(height: 4),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                                  decoration: BoxDecoration(
-                                    color: isDark ? const Color(0xFF0F172A) : Colors.white,
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
-                                    ),
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final isNarrow = constraints.maxWidth < 420;
+
+                          final unitField = Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildFieldLabel(isRtl ? 'وحدة القياس' : 'Measurement Unit', isDark),
+                              const SizedBox(height: 4),
+                              Container(
+                                height: 42,
+                                padding: const EdgeInsets.symmetric(horizontal: 10),
+                                decoration: BoxDecoration(
+                                  color: isDark ? const Color(0xFF0F172A) : Colors.white,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
                                   ),
-                                  child: DropdownButtonHideUnderline(
-                                    child: DropdownButton<String>(
-                                      value: selectedUnit,
-                                      isExpanded: true,
-                                      dropdownColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-                                      items: unitOptions.map((u) => DropdownMenuItem<String>(
-                                            value: u['id'],
-                                            child: Text(
-                                              isRtl ? u['nameAr']! : u['nameEn']!,
-                                              style: TextStyle(fontSize: 11.5, color: isDark ? Colors.white : const Color(0xFF0F172A)),
+                                ),
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<String>(
+                                    value: unitOptions.any((u) => u['id'] == selectedUnit) ? selectedUnit : 'EACH',
+                                    isExpanded: true,
+                                    dropdownColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                    items: unitOptions.map((u) => DropdownMenuItem<String>(
+                                          value: u['id'],
+                                          child: Text(
+                                            isRtl ? u['nameAr']! : u['nameEn']!,
+                                            style: TextStyle(
+                                              fontSize: 11.5,
+                                              color: isDark ? Colors.white : const Color(0xFF0F172A),
                                             ),
-                                          )).toList(),
-                                      onChanged: (val) => setDialogState(() => selectedUnit = val ?? 'EACH'),
-                                    ),
+                                          ),
+                                        )).toList(),
+                                    onChanged: (val) => setDialogState(() => selectedUnit = val ?? 'EACH'),
                                   ),
                                 ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                              ),
+                            ],
+                          );
+
+                          final unitSizeField = Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildFieldLabel(isRtl ? 'حجم / سعة الوحدة' : 'Unit Size / Capacity', isDark),
+                              const SizedBox(height: 4),
+                              _buildTextField(
+                                unitSizeCtrl,
+                                '1',
+                                isDark,
+                                isNumber: true,
+                              ),
+                            ],
+                          );
+
+                          if (isNarrow) {
+                            return Column(
                               children: [
-                                _buildFieldLabel(isRtl ? 'حجم / سعة الوحدة *' : 'Unit Size / Capacity *', isDark),
-                                const SizedBox(height: 4),
-                                _buildTextField(
-                                  unitSizeCtrl,
-                                  '1',
-                                  isDark,
-                                  isNumber: true,
-                                ),
+                                unitField,
+                                const SizedBox(height: 10),
+                                unitSizeField,
                               ],
-                            ),
-                          ),
-                        ],
+                            );
+                          }
+
+                          return Row(
+                            children: [
+                              Expanded(child: unitField),
+                              const SizedBox(width: 10),
+                              Expanded(child: unitSizeField),
+                            ],
+                          );
+                        },
                       ),
                       const SizedBox(height: 16),
 
-                      // SECTION 5: PRODUCT IMAGE
+                      // ==================== SECTION 5: PRODUCT IMAGE ====================
                       _buildSectionHeader(
                         icon: Icons.image_outlined,
-                        title: isRtl ? 'صورة المنتج' : 'Product Photo',
+                        title: isRtl ? 'صورة المنتج' : 'Product Image',
                         isDark: isDark,
                       ),
                       const SizedBox(height: 8),
@@ -2029,35 +2162,77 @@ class _ProductsCrudScreenState extends ConsumerState<ProductsCrudScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // SECTION 6: DESCRIPTIONS
+                      // ==================== SECTION 6: DESCRIPTIONS ====================
                       _buildSectionHeader(
                         icon: Icons.description_outlined,
-                        title: isRtl ? 'الوصف والتفاصيل' : 'Descriptions',
+                        title: isRtl ? 'الوصف' : 'Description',
                         isDark: isDark,
                       ),
                       const SizedBox(height: 8),
-                      _buildFieldLabel(isRtl ? 'الوصف بالإنجليزية' : 'Description (English)', isDark),
-                      const SizedBox(height: 4),
-                      _buildTextArea(
-                        descEnCtrl,
-                        isRtl ? 'أدخل وصف المنتج بالإنجليزية...' : 'Enter product description in English...',
-                        isDark,
-                      ),
-                      const SizedBox(height: 10),
-                      _buildFieldLabel(isRtl ? 'الوصف بالعربية' : 'Description (Arabic)', isDark),
-                      const SizedBox(height: 4),
-                      _buildTextArea(
-                        descArCtrl,
-                        isRtl ? 'أدخل وصف المنتج بالعربية...' : 'Enter product description in Arabic...',
-                        isDark,
-                        isRtl: true,
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final isNarrow = constraints.maxWidth < 420;
+
+                          final descEnField = Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildFieldLabel(isRtl ? 'الوصف بالإنجليزية' : 'Description (EN)', isDark),
+                              const SizedBox(height: 4),
+                              _buildTextArea(
+                                descEnCtrl,
+                                'Product details in English...',
+                                isDark,
+                              ),
+                            ],
+                          );
+
+                          final descArField = Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildFieldLabel(isRtl ? 'الوصف بالعربية' : 'Description (AR)', isDark),
+                              const SizedBox(height: 4),
+                              _buildTextArea(
+                                descArCtrl,
+                                'تفاصيل المنتج بالعربية...',
+                                isDark,
+                                isRtl: true,
+                              ),
+                            ],
+                          );
+
+                          if (isNarrow) {
+                            return Column(
+                              children: [
+                                descEnField,
+                                const SizedBox(height: 10),
+                                descArField,
+                              ],
+                            );
+                          }
+
+                          return Row(
+                            children: [
+                              Expanded(child: descEnField),
+                              const SizedBox(width: 10),
+                              Expanded(child: descArField),
+                            ],
+                          );
+                        },
                       ),
                       const SizedBox(height: 16),
 
-                      // SECTION 7: ACTIVE TOGGLE CARD
+                      // ==================== SECTION 7: ACTIVE STATUS ====================
+                      _buildSectionHeader(
+                        icon: Icons.tune_outlined,
+                        title: isRtl ? 'حالة التفعيل' : 'Status & Visibility',
+                        isDark: isDark,
+                      ),
+                      const SizedBox(height: 8),
                       _buildToggleCard(
-                        title: isRtl ? 'تفعيل المنتج' : 'Active Product',
-                        subtitle: isRtl ? 'إظهار المنتج في دليل العروض والمنتجات العامة' : 'Make product visible across public catalogues and deals',
+                        title: isRtl ? 'حالة تفعيل المنتج' : 'Active Product Status',
+                        subtitle: isRtl
+                            ? 'إظهار المنتج في دليل العروض والمنتجات العامة'
+                            : 'Make product visible across public app & deal catalogues',
                         isSelected: isActive,
                         onTap: () => setDialogState(() => isActive = !isActive),
                         isDark: isDark,
@@ -2070,7 +2245,13 @@ class _ProductsCrudScreenState extends ConsumerState<ProductsCrudScreen> {
               actions: [
                 TextButton(
                   onPressed: isSubmitting ? null : () => Navigator.pop(ctx),
-                  child: Text(isRtl ? 'إلغاء' : 'Cancel'),
+                  child: Text(
+                    isRtl ? 'إلغاء' : 'Cancel',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                    ),
+                  ),
                 ),
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
@@ -2078,14 +2259,13 @@ class _ProductsCrudScreenState extends ConsumerState<ProductsCrudScreen> {
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    elevation: 0,
                   ),
                   icon: isSubmitting
                       ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                       : const Icon(Icons.save, size: 16),
                   label: Text(
-                    isEditing
-                        ? (isRtl ? 'حفظ التعديلات' : 'Save Changes')
-                        : (isRtl ? 'إضافة المنتج' : 'Add Product'),
+                    isRtl ? 'حفظ المنتج' : 'Save Product',
                     style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
                   onPressed: isSubmitting
@@ -2097,26 +2277,44 @@ class _ProductsCrudScreenState extends ConsumerState<ProductsCrudScreen> {
 
                           if (selectedBrandId == null) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Please select a brand partner.'), backgroundColor: Color(0xFFDC2626)),
+                              SnackBar(
+                                content: Text(isRtl ? 'الماركة مطلوبة.' : 'Brand is required.'),
+                                backgroundColor: const Color(0xFFDC2626),
+                              ),
                             );
                             return;
                           }
-                          if (nameEn.isEmpty || nameAr.isEmpty) {
+                          if (nameEn.isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('English and Arabic product names are required.'), backgroundColor: Color(0xFFDC2626)),
+                              SnackBar(
+                                content: Text(isRtl ? 'الاسم بالإنجليزية مطلوب.' : 'English name is required.'),
+                                backgroundColor: const Color(0xFFDC2626),
+                              ),
+                            );
+                            return;
+                          }
+                          if (nameAr.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(isRtl ? 'الاسم بالعربية مطلوب.' : 'Arabic name is required.'),
+                                backgroundColor: const Color(0xFFDC2626),
+                              ),
                             );
                             return;
                           }
                           if (finalCategoryId == null) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Please select a category.'), backgroundColor: Color(0xFFDC2626)),
+                              SnackBar(
+                                content: Text(isRtl ? 'يرجى اختيار القسم الرئيسي.' : 'Please select a main category.'),
+                                backgroundColor: const Color(0xFFDC2626),
+                              ),
                             );
                             return;
                           }
 
                           setDialogState(() => isSubmitting = true);
 
-                          final selectedBrandObj = brands.where((b) => b.id == selectedBrandId).firstOrNull;
+                          final selectedBrandObj = liveBrands.where((b) => b.id == selectedBrandId).firstOrNull;
 
                           bool success = false;
                           if (isEditing) {
@@ -2162,6 +2360,20 @@ class _ProductsCrudScreenState extends ConsumerState<ProductsCrudScreen> {
 
                           if (success && context.mounted) {
                             Navigator.pop(ctx);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Row(
+                                  children: [
+                                    const Icon(Icons.check_circle, color: Colors.white, size: 18),
+                                    const SizedBox(width: 8),
+                                    Text(isEditing
+                                        ? (isRtl ? 'تم تحديث المنتج بنجاح.' : 'Product updated successfully.')
+                                        : (isRtl ? 'تم إضافة المنتج بنجاح.' : 'Product added successfully.')),
+                                  ],
+                                ),
+                                backgroundColor: const Color(0xFF16A34A),
+                              ),
+                            );
                             _loadInitialProducts();
                           }
                         },
@@ -2170,6 +2382,22 @@ class _ProductsCrudScreenState extends ConsumerState<ProductsCrudScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildStepBadge(String step) {
+    return Container(
+      width: 18,
+      height: 18,
+      decoration: BoxDecoration(
+        color: const Color(0xFF16A34A),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        step,
+        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white),
       ),
     );
   }

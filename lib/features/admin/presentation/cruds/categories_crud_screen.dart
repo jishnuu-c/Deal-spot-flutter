@@ -221,7 +221,10 @@ class _CategoriesCrudScreenState extends ConsumerState<CategoriesCrudScreen> {
           (_activeTab == 'parent' ? (parentCategories.length + 1).toString() : (_getSubCategories(allCategories).length + 1).toString()),
     );
 
-    int? selectedParentId = cat?.parentId ?? (_activeTab == 'sub' ? _selectedParentFilter ?? (parentCategories.isNotEmpty ? parentCategories.first.id : null) : null);
+    final availableParents = parentCategories.where((Category p) => cat == null || p.id != cat.id).toList();
+    int? selectedParentId = (cat?.parentId != null && availableParents.any((p) => p.id == cat!.parentId))
+        ? cat!.parentId
+        : (_activeTab == 'sub' ? (_selectedParentFilter != null && availableParents.any((p) => p.id == _selectedParentFilter) ? _selectedParentFilter : (availableParents.isNotEmpty ? availableParents.first.id : null)) : null);
     bool isActive = cat == null ? true : cat.isActive == 1;
     XFile? pickedImage;
     Uint8List? pickedImageBytes;

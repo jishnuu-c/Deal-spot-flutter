@@ -1177,7 +1177,7 @@ class _StoresCrudScreenState extends ConsumerState<StoresCrudScreen> {
                                   color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
                                   borderRadius: BorderRadius.circular(7),
                                   child: InkWell(
-                                    onTap: () => context.go('/admin/stores/${s.id}/branches'),
+                                    onTap: () => context.push('/admin/stores/${s.id}/branches'),
                                     borderRadius: BorderRadius.circular(7),
                                     child: Container(
                                       width: 30,

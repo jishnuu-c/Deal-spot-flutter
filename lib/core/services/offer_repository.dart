@@ -1,4 +1,8 @@
+import 'dart:convert';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http_parser/http_parser.dart';
+import 'package:image_picker/image_picker.dart' hide Category;
 import '../../models/models.dart';
 import 'api_client.dart';
 import 'city_repository.dart';
@@ -295,6 +299,11 @@ class OfferNotifier extends StateNotifier<OfferState> {
       }
     } catch (_) {}
 
+    // Fallback: If /offers/paged failed and state.offers is empty, fetch all offers first
+    if (state.offers.isEmpty) {
+      await fetchOffers(storeId: storeId, includeExpired: true);
+    }
+
     // Fallback: local filtering
     final all = getOffers();
     var filtered = all;
@@ -302,7 +311,13 @@ class OfferNotifier extends StateNotifier<OfferState> {
       final q = search.trim().toLowerCase();
       filtered = filtered.where((o) =>
           o.titleEn.toLowerCase().contains(q) ||
-          o.titleAr.toLowerCase().contains(q)).toList();
+          o.titleAr.toLowerCase().contains(q) ||
+          (o.store?.nameEn.toLowerCase().contains(q) ?? false) ||
+          (o.store?.nameAr.toLowerCase().contains(q) ?? false) ||
+          (o.product?.nameEn.toLowerCase().contains(q) ?? false) ||
+          (o.product?.nameAr.toLowerCase().contains(q) ?? false) ||
+          (o.category?.nameEn.toLowerCase().contains(q) ?? false) ||
+          (o.category?.nameAr.toLowerCase().contains(q) ?? false)).toList();
     }
     if (storeId != null) {
       filtered = filtered.where((o) => o.storeId == storeId).toList();
@@ -367,60 +382,257 @@ class OfferNotifier extends StateNotifier<OfferState> {
   }
 
   // Admin CRUD - Offers
-  Future<void> createOffer(String titleEn, String titleAr, double origPrice, double offerPrice, String badge, String from, String until, int storeId, int? prodId, int categoryId, int cityId, int isFeatured, int isFlash, int isActive) async {
-    final discount = origPrice > 0 ? ((origPrice - offerPrice) / origPrice * 100).roundToDouble() : 0.0;
-
+  Future<bool> extendOffer(int id, [int days = 7]) async {
     try {
-      final response = await _apiClient.post(
-        '/offers/create',
-        data: {
-          'titleEn': titleEn,
-          'titleAr': titleAr,
-          'originalPrice': origPrice,
-          'offerPrice': offerPrice,
-          'discountPct': discount,
-          'badgeType': badge,
-          'validFrom': from,
-          'validUntil': until,
-          'storeId': storeId,
-          'productId': prodId,
-          'categoryId': categoryId,
-          'cityId': cityId,
-          'featured': isFeatured == 1,
-          'flash': isFlash == 1,
-          'active': isActive == 1,
-        },
-      );
-      if (response.statusCode == 200 && response.data != null) {
-        final created = Offer.fromJson(response.data as Map<String, dynamic>);
-        state = state.copyWith(offers: [...state.offers, created]);
-        return;
+      final response = await _apiClient.post('/offers/$id/extend?days=$days');
+      if (response.statusCode == 200) {
+        // Update local state validUntil if exists
+        final list = [...state.offers];
+        final idx = list.indexWhere((o) => o.id == id);
+        if (idx != -1) {
+          final cur = list[idx];
+          DateTime newUntil;
+          try {
+            final parsed = DateTime.parse(cur.validUntil.split('T')[0]);
+            newUntil = parsed.add(Duration(days: days));
+          } catch (_) {
+            newUntil = DateTime.now().add(Duration(days: days));
+          }
+          final y = newUntil.year.toString().padLeft(4, '0');
+          final m = newUntil.month.toString().padLeft(2, '0');
+          final d = newUntil.day.toString().padLeft(2, '0');
+          list[idx] = cur.copyWith(
+            validUntil: '$y-$m-$d',
+            isActive: 1,
+          );
+          state = state.copyWith(offers: list);
+        }
+        return true;
       }
     } catch (_) {}
 
-    final newId = state.offers.isEmpty ? 1 : state.offers.map((o) => o.id).reduce((a, b) => a > b ? a : b) + 1;
-    final newOffer = Offer(
-      id: newId,
-      storeId: storeId,
-      productId: prodId,
-      categoryId: categoryId,
-      cityId: cityId,
+    // Fallback local extend
+    final list = [...state.offers];
+    final idx = list.indexWhere((o) => o.id == id);
+    if (idx != -1) {
+      final cur = list[idx];
+      DateTime newUntil;
+      try {
+        final parsed = DateTime.parse(cur.validUntil.split('T')[0]);
+        newUntil = parsed.add(Duration(days: days));
+      } catch (_) {
+        newUntil = DateTime.now().add(Duration(days: days));
+      }
+      final y = newUntil.year.toString().padLeft(4, '0');
+      final m = newUntil.month.toString().padLeft(2, '0');
+      final d = newUntil.day.toString().padLeft(2, '0');
+      list[idx] = cur.copyWith(
+        validUntil: '$y-$m-$d',
+        isActive: 1,
+      );
+      state = state.copyWith(offers: list);
+      return true;
+    }
+    return false;
+  }
+
+  Future<bool> saveOfferMultipart({
+    int? id,
+    required String titleEn,
+    required String titleAr,
+    required double origPrice,
+    required double offerPrice,
+    required double discountPct,
+    required String badgeType,
+    required String validFrom,
+    required String validUntil,
+    required int storeId,
+    int? productId,
+    required int categoryId,
+    required int cityId,
+    String? descriptionEn,
+    String? descriptionAr,
+    String? termsEn,
+    String? termsAr,
+    required bool isFeatured,
+    required bool isFlash,
+    required bool isInStore,
+    required bool isOnline,
+    required bool isActive,
+    List<XFile>? imageFiles,
+  }) async {
+    final offerDto = {
+      'titleEn': titleEn,
+      'titleAr': titleAr,
+      'storeId': storeId,
+      'categoryId': categoryId,
+      'cityId': cityId,
+      'productId': productId,
+      'originalPrice': origPrice,
+      'offerPrice': offerPrice,
+      'discountPct': discountPct,
+      'badgeType': badgeType,
+      'validFrom': validFrom,
+      'validUntil': validUntil,
+      'descriptionEn': descriptionEn ?? '',
+      'descriptionAr': descriptionAr ?? '',
+      'termsEn': termsEn ?? '',
+      'termsAr': termsAr ?? '',
+      'featured': isFeatured,
+      'flash': isFlash,
+      'online': isOnline,
+      'inStore': isInStore,
+      'active': isActive,
+    };
+
+    try {
+      final formMap = <String, dynamic>{
+        'data': MultipartFile.fromString(
+          jsonEncode(offerDto),
+          contentType: MediaType.parse('application/json'),
+        ),
+      };
+
+      if (imageFiles != null && imageFiles.isNotEmpty) {
+        final multipartFiles = <MultipartFile>[];
+        for (final img in imageFiles) {
+          final bytes = await img.readAsBytes();
+          multipartFiles.add(MultipartFile.fromBytes(bytes, filename: img.name));
+        }
+        formMap['files'] = multipartFiles;
+      }
+
+      final formData = FormData.fromMap(formMap);
+
+      if (id != null) {
+        final response = await _apiClient.put('/offers/update/$id', data: formData);
+        if (response.statusCode == 200 || response.statusCode == 204) {
+          if (response.data != null && response.data is Map) {
+            final updated = Offer.fromJson(response.data as Map<String, dynamic>);
+            final list = [...state.offers];
+            final idx = list.indexWhere((o) => o.id == id);
+            if (idx != -1) {
+              list[idx] = updated;
+              state = state.copyWith(offers: list);
+            }
+          }
+          return true;
+        }
+      } else {
+        final response = await _apiClient.post('/offers/create', data: formData);
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          if (response.data != null && response.data is Map) {
+            final created = Offer.fromJson(response.data as Map<String, dynamic>);
+            state = state.copyWith(offers: [created, ...state.offers]);
+          }
+          return true;
+        }
+      }
+    } catch (_) {
+      // Fallback direct JSON call
+      try {
+        if (id != null) {
+          await _apiClient.put('/offers/update/$id', data: offerDto);
+          return true;
+        } else {
+          final response = await _apiClient.post('/offers/create', data: offerDto);
+          if (response.statusCode == 200 || response.statusCode == 201) {
+            if (response.data != null && response.data is Map) {
+              final created = Offer.fromJson(response.data as Map<String, dynamic>);
+              state = state.copyWith(offers: [created, ...state.offers]);
+            }
+            return true;
+          }
+        }
+      } catch (_) {}
+    }
+
+    // Local fallback update/create
+    if (id != null) {
+      final list = [...state.offers];
+      final idx = list.indexWhere((o) => o.id == id);
+      if (idx != -1) {
+        list[idx] = list[idx].copyWith(
+          titleEn: titleEn,
+          titleAr: titleAr,
+          originalPrice: origPrice,
+          offerPrice: offerPrice,
+          discountPct: discountPct,
+          badgeType: badgeType,
+          validFrom: validFrom,
+          validUntil: validUntil,
+          descriptionEn: descriptionEn,
+          descriptionAr: descriptionAr,
+          termsEn: termsEn,
+          termsAr: termsAr,
+          storeId: storeId,
+          productId: productId,
+          categoryId: categoryId,
+          cityId: cityId,
+          isFeatured: isFeatured ? 1 : 0,
+          isFlash: isFlash ? 1 : 0,
+          isInStore: isInStore ? 1 : 0,
+          isOnline: isOnline ? 1 : 0,
+          isActive: isActive ? 1 : 0,
+        );
+        state = state.copyWith(offers: list);
+        return true;
+      }
+    } else {
+      final newId = state.offers.isEmpty ? 1 : state.offers.map((o) => o.id).reduce((a, b) => a > b ? a : b) + 1;
+      final newOffer = Offer(
+        id: newId,
+        storeId: storeId,
+        productId: productId,
+        categoryId: categoryId,
+        cityId: cityId,
+        titleEn: titleEn,
+        titleAr: titleAr,
+        originalPrice: origPrice,
+        offerPrice: offerPrice,
+        discountPct: discountPct,
+        badgeType: badgeType,
+        validFrom: validFrom,
+        validUntil: validUntil,
+        descriptionEn: descriptionEn,
+        descriptionAr: descriptionAr,
+        termsEn: termsEn,
+        termsAr: termsAr,
+        isFeatured: isFeatured ? 1 : 0,
+        isFlash: isFlash ? 1 : 0,
+        isInStore: isInStore ? 1 : 0,
+        isOnline: isOnline ? 1 : 0,
+        isActive: isActive ? 1 : 0,
+        viewCount: 0,
+        saveCount: 0,
+      );
+      state = state.copyWith(offers: [newOffer, ...state.offers]);
+      return true;
+    }
+    return false;
+  }
+
+  Future<void> createOffer(String titleEn, String titleAr, double origPrice, double offerPrice, String badge, String from, String until, int storeId, int? prodId, int categoryId, int cityId, int isFeatured, int isFlash, int isActive) async {
+    final discount = origPrice > 0 ? ((origPrice - offerPrice) / origPrice * 100).roundToDouble() : 0.0;
+    await saveOfferMultipart(
       titleEn: titleEn,
       titleAr: titleAr,
-      originalPrice: origPrice,
+      origPrice: origPrice,
       offerPrice: offerPrice,
       discountPct: discount,
       badgeType: badge,
       validFrom: from,
       validUntil: until,
-      isFeatured: isFeatured,
-      isFlash: isFlash,
-      isActive: isActive,
-      viewCount: 0,
-      saveCount: 0,
+      storeId: storeId,
+      productId: prodId,
+      categoryId: categoryId,
+      cityId: cityId,
+      isFeatured: isFeatured == 1,
+      isFlash: isFlash == 1,
+      isInStore: true,
+      isOnline: false,
+      isActive: isActive == 1,
     );
-
-    state = state.copyWith(offers: [...state.offers, newOffer]);
   }
 
   Future<void> updateOffer(
@@ -443,52 +655,26 @@ class OfferNotifier extends StateNotifier<OfferState> {
     final discount = origPrice > 0
         ? ((origPrice - offerPrice) / origPrice * 100).roundToDouble()
         : 0.0;
-
-    try {
-      await _apiClient.put(
-        '/offers/update/$id',
-        data: {
-          'titleEn': titleEn,
-          'titleAr': titleAr,
-          'originalPrice': origPrice,
-          'offerPrice': offerPrice,
-          'discountPct': discount,
-          'badgeType': badge,
-          'validFrom': from,
-          'validUntil': until,
-          'storeId': storeId,
-          'productId': prodId,
-          'categoryId': categoryId,
-          'cityId': cityId,
-          'featured': isFeatured == 1,
-          'flash': isFlash == 1,
-          'active': isActive == 1,
-        },
-      );
-    } catch (_) {}
-
-    final list = [...state.offers];
-    final idx = list.indexWhere((o) => o.id == id);
-    if (idx != -1) {
-      list[idx] = list[idx].copyWith(
-        titleEn: titleEn,
-        titleAr: titleAr,
-        originalPrice: origPrice,
-        offerPrice: offerPrice,
-        discountPct: discount,
-        badgeType: badge,
-        validFrom: from,
-        validUntil: until,
-        storeId: storeId,
-        productId: prodId,
-        categoryId: categoryId,
-        cityId: cityId,
-        isFeatured: isFeatured,
-        isFlash: isFlash,
-        isActive: isActive,
-      );
-      state = state.copyWith(offers: list);
-    }
+    await saveOfferMultipart(
+      id: id,
+      titleEn: titleEn,
+      titleAr: titleAr,
+      origPrice: origPrice,
+      offerPrice: offerPrice,
+      discountPct: discount,
+      badgeType: badge,
+      validFrom: from,
+      validUntil: until,
+      storeId: storeId,
+      productId: prodId,
+      categoryId: categoryId,
+      cityId: cityId,
+      isFeatured: isFeatured == 1,
+      isFlash: isFlash == 1,
+      isInStore: true,
+      isOnline: false,
+      isActive: isActive == 1,
+    );
   }
 
   Future<void> deleteOffer(int id) async {

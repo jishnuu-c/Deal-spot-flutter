@@ -16,11 +16,17 @@ class Offer extends Equatable {
   final double originalPrice;
   final double offerPrice;
   final double discountPct;
-  final String badgeType; // 'BOGO' | 'PROMO' | 'FLASH' | 'FEATURED' | 'NONE'
+  final String badgeType; // 'BOGO' | 'PROMO' | 'FLASH' | 'FEATURED' | 'NONE' | 'PERCENT_OFF' | 'NEW' | 'CLEARANCE' | 'COUPON'
   final String validFrom;
   final String validUntil;
+  final String? descriptionEn;
+  final String? descriptionAr;
+  final String? termsEn;
+  final String? termsAr;
   final int isFeatured;
   final int isFlash;
+  final int isInStore;
+  final int isOnline;
   final int isActive;
   final int viewCount;
   final int saveCount;
@@ -32,6 +38,7 @@ class Offer extends Equatable {
   final City? city;
   final List<OfferImage>? images;
   final bool? isSaved; // dynamic field for active user
+  final String? imageUrl; // optional single image field
 
   const Offer({
     required this.id,
@@ -47,8 +54,14 @@ class Offer extends Equatable {
     required this.badgeType,
     required this.validFrom,
     required this.validUntil,
+    this.descriptionEn,
+    this.descriptionAr,
+    this.termsEn,
+    this.termsAr,
     required this.isFeatured,
     required this.isFlash,
+    this.isInStore = 1,
+    this.isOnline = 0,
     required this.isActive,
     required this.viewCount,
     required this.saveCount,
@@ -58,7 +71,52 @@ class Offer extends Equatable {
     this.city,
     this.images,
     this.isSaved,
+    this.imageUrl,
   });
+
+  bool get isExpired {
+    if (validUntil.isEmpty) return false;
+    try {
+      final dt = DateTime.parse(validUntil.split('T')[0]);
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      return dt.isBefore(today);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  bool get isUpcoming {
+    if (validFrom.isEmpty) return false;
+    try {
+      final dt = DateTime.parse(validFrom.split('T')[0]);
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      return dt.isAfter(today);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  String get status {
+    if (isExpired) return 'EXPIRED';
+    if (isUpcoming) return 'UPCOMING';
+    if (isActive == 1) return 'ACTIVE';
+    return 'DISABLED';
+  }
+
+  String get primaryImageUrl {
+    if (images != null && images!.isNotEmpty && images!.first.imageUrl.isNotEmpty) {
+      return images!.first.imageUrl;
+    }
+    if (imageUrl != null && imageUrl!.isNotEmpty) {
+      return imageUrl!;
+    }
+    if (product != null && product!.primaryImageUrl.isNotEmpty) {
+      return product!.primaryImageUrl;
+    }
+    return '';
+  }
 
   Offer copyWith({
     int? id,
@@ -74,8 +132,14 @@ class Offer extends Equatable {
     String? badgeType,
     String? validFrom,
     String? validUntil,
+    String? descriptionEn,
+    String? descriptionAr,
+    String? termsEn,
+    String? termsAr,
     int? isFeatured,
     int? isFlash,
+    int? isInStore,
+    int? isOnline,
     int? isActive,
     int? viewCount,
     int? saveCount,
@@ -85,6 +149,7 @@ class Offer extends Equatable {
     City? city,
     List<OfferImage>? images,
     bool? isSaved,
+    String? imageUrl,
   }) {
     return Offer(
       id: id ?? this.id,
@@ -100,8 +165,14 @@ class Offer extends Equatable {
       badgeType: badgeType ?? this.badgeType,
       validFrom: validFrom ?? this.validFrom,
       validUntil: validUntil ?? this.validUntil,
+      descriptionEn: descriptionEn ?? this.descriptionEn,
+      descriptionAr: descriptionAr ?? this.descriptionAr,
+      termsEn: termsEn ?? this.termsEn,
+      termsAr: termsAr ?? this.termsAr,
       isFeatured: isFeatured ?? this.isFeatured,
       isFlash: isFlash ?? this.isFlash,
+      isInStore: isInStore ?? this.isInStore,
+      isOnline: isOnline ?? this.isOnline,
       isActive: isActive ?? this.isActive,
       viewCount: viewCount ?? this.viewCount,
       saveCount: saveCount ?? this.saveCount,
@@ -111,6 +182,7 @@ class Offer extends Equatable {
       city: city ?? this.city,
       images: images ?? this.images,
       isSaved: isSaved ?? this.isSaved,
+      imageUrl: imageUrl ?? this.imageUrl,
     );
   }
 
@@ -184,9 +256,19 @@ class Offer extends Equatable {
         ? ((json['flash'] as bool) ? 1 : 0)
         : (json['is_flash'] as num?)?.toInt() ?? (json['isFlash'] as num?)?.toInt() ?? 0;
 
+    final isInStoreVal = json['inStore'] is bool
+        ? ((json['inStore'] as bool) ? 1 : 0)
+        : (json['is_in_store'] as num?)?.toInt() ?? (json['isInStore'] as num?)?.toInt() ?? 1;
+
+    final isOnlineVal = json['online'] is bool
+        ? ((json['online'] as bool) ? 1 : 0)
+        : (json['is_online'] as num?)?.toInt() ?? (json['isOnline'] as num?)?.toInt() ?? 0;
+
     final isActiveVal = json['active'] is bool
         ? ((json['active'] as bool) ? 1 : 0)
         : (json['is_active'] as num?)?.toInt() ?? (json['isActive'] as num?)?.toInt() ?? 1;
+
+    String? singleImg = json['imageUrl'] as String? ?? json['thumbnailUrl'] as String? ?? json['image_url'] as String?;
 
     return Offer(
       id: (json['id'] as num?)?.toInt() ?? 0,
@@ -202,8 +284,14 @@ class Offer extends Equatable {
       badgeType: (json['badgeType'] ?? json['badge_type'] ?? 'NONE').toString(),
       validFrom: (json['validFrom'] ?? json['valid_from'] ?? '').toString(),
       validUntil: (json['validUntil'] ?? json['valid_until'] ?? '').toString(),
+      descriptionEn: json['descriptionEn'] as String? ?? json['description_en'] as String?,
+      descriptionAr: json['descriptionAr'] as String? ?? json['description_ar'] as String?,
+      termsEn: json['termsEn'] as String? ?? json['terms_en'] as String?,
+      termsAr: json['termsAr'] as String? ?? json['terms_ar'] as String?,
       isFeatured: isFeaturedVal,
       isFlash: isFlashVal,
+      isInStore: isInStoreVal,
+      isOnline: isOnlineVal,
       isActive: isActiveVal,
       viewCount: (json['viewCount'] as num?)?.toInt() ?? (json['view_count'] as num?)?.toInt() ?? 0,
       saveCount: (json['saveCount'] as num?)?.toInt() ?? (json['save_count'] as num?)?.toInt() ?? 0,
@@ -213,6 +301,7 @@ class Offer extends Equatable {
       city: json['city'] != null && json['city'] is Map ? City.fromJson(json['city'] as Map<String, dynamic>) : null,
       images: imgs,
       isSaved: json['isSaved'] as bool? ?? json['saved'] as bool?,
+      imageUrl: singleImg,
     );
   }
 
@@ -231,8 +320,14 @@ class Offer extends Equatable {
       'badge_type': badgeType,
       'valid_from': validFrom,
       'valid_until': validUntil,
+      'description_en': descriptionEn,
+      'description_ar': descriptionAr,
+      'terms_en': termsEn,
+      'terms_ar': termsAr,
       'is_featured': isFeatured,
       'is_flash': isFlash,
+      'is_in_store': isInStore,
+      'is_online': isOnline,
       'is_active': isActive,
       'view_count': viewCount,
       'save_count': saveCount,
@@ -242,6 +337,7 @@ class Offer extends Equatable {
       if (city != null) 'city': city!.toJson(),
       if (images != null) 'images': images!.map((e) => e.toJson()).toList(),
       if (isSaved != null) 'isSaved': isSaved,
+      if (imageUrl != null) 'imageUrl': imageUrl,
     };
   }
 
@@ -260,8 +356,14 @@ class Offer extends Equatable {
         badgeType,
         validFrom,
         validUntil,
+        descriptionEn,
+        descriptionAr,
+        termsEn,
+        termsAr,
         isFeatured,
         isFlash,
+        isInStore,
+        isOnline,
         isActive,
         viewCount,
         saveCount,
@@ -271,5 +373,6 @@ class Offer extends Equatable {
         city,
         images,
         isSaved,
+        imageUrl,
       ];
 }

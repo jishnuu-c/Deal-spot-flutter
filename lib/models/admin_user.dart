@@ -5,9 +5,10 @@ class AdminUser extends Equatable {
   final String fullName;
   final String email;
   final String? passwordHash;
-  final String role; // 'admin' | 'superadmin' | 'editor'
+  final String role; // 'admin' | 'superadmin' | 'editor' | 'STORE_MANAGER'
   final int isActive;
   final String? lastLoginAt;
+  final int? storeId;
 
   const AdminUser({
     required this.id,
@@ -17,6 +18,7 @@ class AdminUser extends Equatable {
     required this.role,
     required this.isActive,
     this.lastLoginAt,
+    this.storeId,
   });
 
   AdminUser copyWith({
@@ -27,6 +29,7 @@ class AdminUser extends Equatable {
     String? role,
     int? isActive,
     String? lastLoginAt,
+    int? storeId,
   }) {
     return AdminUser(
       id: id ?? this.id,
@@ -36,18 +39,20 @@ class AdminUser extends Equatable {
       role: role ?? this.role,
       isActive: isActive ?? this.isActive,
       lastLoginAt: lastLoginAt ?? this.lastLoginAt,
+      storeId: storeId ?? this.storeId,
     );
   }
 
   factory AdminUser.fromJson(Map<String, dynamic> json) {
     return AdminUser(
-      id: json['id'] as int,
-      fullName: json['full_name'] as String,
-      email: json['email'] as String,
-      passwordHash: json['password_hash'] as String?,
-      role: json['role'] as String,
-      isActive: json['is_active'] as int,
-      lastLoginAt: json['last_login_at'] as String?,
+      id: (json['id'] as num).toInt(),
+      fullName: json['full_name'] as String? ?? json['fullName'] as String? ?? '',
+      email: json['email'] as String? ?? '',
+      passwordHash: json['password_hash'] as String? ?? json['passwordHash'] as String?,
+      role: json['role'] as String? ?? 'admin',
+      isActive: (json['is_active'] as num?)?.toInt() ?? (json['isActive'] as num?)?.toInt() ?? 1,
+      lastLoginAt: json['last_login_at'] as String? ?? json['lastLoginAt'] as String?,
+      storeId: (json['store_id'] as num?)?.toInt() ?? (json['storeId'] as num?)?.toInt(),
     );
   }
 
@@ -60,9 +65,10 @@ class AdminUser extends Equatable {
       'role': role,
       'is_active': isActive,
       'last_login_at': lastLoginAt,
+      'store_id': storeId,
     };
   }
 
   @override
-  List<Object?> get props => [id, fullName, email, passwordHash, role, isActive, lastLoginAt];
+  List<Object?> get props => [id, fullName, email, passwordHash, role, isActive, lastLoginAt, storeId];
 }

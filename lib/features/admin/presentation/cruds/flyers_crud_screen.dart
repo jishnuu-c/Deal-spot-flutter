@@ -36,22 +36,27 @@ class _FlyersCrudScreenState extends ConsumerState<FlyersCrudScreen> {
     final stores = ref.read(storeRepositoryProvider).stores;
     final cities = ref.read(cityRepositoryProvider).cities;
 
-    int? selectedStoreId = flyer?.storeId ?? (stores.isNotEmpty ? stores[0].id : null);
-    int? selectedCityId = flyer?.cityId ?? (cities.isNotEmpty ? cities[0].id : null);
+    int? selectedStoreId = flyer?.storeId != null && stores.any((s) => s.id == flyer!.storeId)
+        ? flyer!.storeId
+        : (stores.isNotEmpty ? stores[0].id : null);
+    int? selectedCityId = flyer?.cityId != null && cities.any((c) => c.id == flyer!.cityId)
+        ? flyer!.cityId
+        : (cities.isNotEmpty ? cities[0].id : null);
     bool isActive = flyer == null ? true : flyer.isActive == 1;
+    bool isSaving = false;
 
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogCtx) {
         return StatefulBuilder(
-          builder: (context, setState) {
+          builder: (context, setDialogState) {
             return AlertDialog(
               title: Text(flyer == null ? 'Add Flyer' : 'Edit Flyer'),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    TextField(controller: titleEnCtrl, decoration: const InputDecoration(labelText: 'Title (EN)')),
+                    TextField(controller: titleEnCtrl, decoration: const InputDecoration(labelText: 'Title (EN) *')),
                     const SizedBox(height: 8),
                     TextField(controller: titleArCtrl, decoration: const InputDecoration(labelText: 'Title (AR)')),
                     const SizedBox(height: 8),
@@ -63,72 +68,110 @@ class _FlyersCrudScreenState extends ConsumerState<FlyersCrudScreen> {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        Expanded(child: TextField(controller: fromCtrl, decoration: const InputDecoration(labelText: 'Valid From'))),
+                        Expanded(child: TextField(controller: fromCtrl, decoration: const InputDecoration(labelText: 'Valid From (YYYY-MM-DD)'))),
                         const SizedBox(width: 8),
-                        Expanded(child: TextField(controller: untilCtrl, decoration: const InputDecoration(labelText: 'Valid Until'))),
+                        Expanded(child: TextField(controller: untilCtrl, decoration: const InputDecoration(labelText: 'Valid Until (YYYY-MM-DD)'))),
                       ],
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<int>(
                       value: selectedStoreId,
-                      decoration: const InputDecoration(labelText: 'Store'),
+                      decoration: const InputDecoration(labelText: 'Store *'),
                       items: stores.map((s) => DropdownMenuItem(value: s.id, child: Text(s.nameEn))).toList(),
-                      onChanged: (val) => setState(() => selectedStoreId = val),
+                      onChanged: (val) => setDialogState(() => selectedStoreId = val),
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<int>(
                       value: selectedCityId,
-                      decoration: const InputDecoration(labelText: 'City'),
+                      decoration: const InputDecoration(labelText: 'City *'),
                       items: cities.map((c) => DropdownMenuItem(value: c.id, child: Text(c.nameEn))).toList(),
-                      onChanged: (val) => setState(() => selectedCityId = val),
+                      onChanged: (val) => setDialogState(() => selectedCityId = val),
                     ),
                     const SizedBox(height: 8),
                     CheckboxListTile(
                       title: const Text('Is Active'),
                       value: isActive,
-                      onChanged: (val) => setState(() => isActive = val ?? true),
+                      onChanged: (val) => setDialogState(() => isActive = val ?? true),
                     ),
                   ],
                 ),
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+                TextButton(onPressed: () => Navigator.pop(dialogCtx), child: const Text('Cancel')),
                 ElevatedButton(
-                  onPressed: () {
-                    if (selectedStoreId == null || selectedCityId == null) return;
-                    final totalP = int.tryParse(pagesCountCtrl.text) ?? 1;
+                  onPressed: isSaving
+                      ? null
+                      : () async {
+                          final titleEn = titleEnCtrl.text.trim();
+                          final titleAr = titleArCtrl.text.trim();
+                          if (titleEn.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Please enter Title (EN)'), backgroundColor: Colors.red),
+                            );
+                            return;
+                          }
+                          if (selectedStoreId == null || selectedCityId == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Please select Store and City'), backgroundColor: Colors.red),
+                            );
+                            return;
+                          }
+                          final totalP = int.tryParse(pagesCountCtrl.text.trim()) ?? 1;
 
-                    if (flyer == null) {
-                      ref.read(flyerRepositoryProvider.notifier).createFlyer(
-                            titleEnCtrl.text,
-                            titleArCtrl.text,
-                            coverCtrl.text,
-                            pdfCtrl.text,
-                            totalP,
-                            fromCtrl.text,
-                            untilCtrl.text,
-                            selectedStoreId!,
-                            selectedCityId!,
-                            isActive ? 1 : 0,
-                          );
-                    } else {
-                      ref.read(flyerRepositoryProvider.notifier).updateFlyer(
-                            flyer.id,
-                            titleEnCtrl.text,
-                            titleArCtrl.text,
-                            coverCtrl.text,
-                            pdfCtrl.text,
-                            totalP,
-                            fromCtrl.text,
-                            untilCtrl.text,
-                            selectedStoreId!,
-                            selectedCityId!,
-                            isActive ? 1 : 0,
-                          );
-                    }
-                    Navigator.pop(context);
-                  },
-                  child: const Text('Save'),
+                          setDialogState(() => isSaving = true);
+                          try {
+                            if (flyer == null) {
+                              ref.read(flyerRepositoryProvider.notifier).createFlyer(
+                                    titleEn,
+                                    titleAr.isNotEmpty ? titleAr : titleEn,
+                                    coverCtrl.text.trim(),
+                                    pdfCtrl.text.trim(),
+                                    totalP,
+                                    fromCtrl.text.trim(),
+                                    untilCtrl.text.trim(),
+                                    selectedStoreId!,
+                                    selectedCityId!,
+                                    isActive ? 1 : 0,
+                                  );
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Flyer created successfully!'), backgroundColor: Colors.green),
+                                );
+                              }
+                            } else {
+                              ref.read(flyerRepositoryProvider.notifier).updateFlyer(
+                                    flyer.id,
+                                    titleEn,
+                                    titleAr.isNotEmpty ? titleAr : titleEn,
+                                    coverCtrl.text.trim(),
+                                    pdfCtrl.text.trim(),
+                                    totalP,
+                                    fromCtrl.text.trim(),
+                                    untilCtrl.text.trim(),
+                                    selectedStoreId!,
+                                    selectedCityId!,
+                                    isActive ? 1 : 0,
+                                  );
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Flyer updated successfully!'), backgroundColor: Colors.green),
+                                );
+                              }
+                            }
+                            if (dialogCtx.mounted) Navigator.pop(dialogCtx);
+                            ref.read(flyerRepositoryProvider.notifier).fetchFlyers();
+                          } catch (e) {
+                            setDialogState(() => isSaving = false);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Error saving flyer: $e'), backgroundColor: Colors.red),
+                              );
+                            }
+                          }
+                        },
+                  child: isSaving
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Text('Save'),
                 ),
               ],
             );
@@ -170,7 +213,7 @@ class _FlyersCrudScreenState extends ConsumerState<FlyersCrudScreen> {
               children: [
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.orange.shade50, foregroundColor: Colors.orange, elevation: 0),
-                  onPressed: () => context.go('/admin/flyers/${flyer.id}/pages'),
+                  onPressed: () => context.push('/admin/flyers/${flyer.id}/pages'),
                   icon: const Icon(Icons.layers, size: 14),
                   label: const Text('Pages', style: TextStyle(fontSize: 11)),
                 ),
