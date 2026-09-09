@@ -57,17 +57,23 @@ class User extends Equatable {
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: json['id'] as int,
-      cityId: json['city_id'] as int?,
-      fullName: json['full_name'] as String,
-      email: json['email'] as String,
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      cityId: (json['cityId'] as num?)?.toInt() ?? (json['city_id'] as num?)?.toInt(),
+      fullName: (json['fullName'] ?? json['full_name'] ?? '').toString(),
+      email: (json['email'] ?? '').toString(),
       phone: json['phone'] as String?,
-      preferredLang: json['preferred_lang'] as String? ?? 'en',
-      fcmToken: json['fcm_token'] as String?,
-      apnsToken: json['apns_token'] as String?,
-      emailVerified: json['email_verified'] as int? ?? 0,
-      phoneVerified: json['phone_verified'] as int? ?? 0,
-      isActive: json['is_active'] as int? ?? 1,
+      preferredLang: json['preferredLang'] as String? ?? json['preferred_lang'] as String? ?? 'en',
+      fcmToken: json['fcmToken'] as String? ?? json['fcm_token'] as String?,
+      apnsToken: json['apnsToken'] as String? ?? json['apns_token'] as String?,
+      emailVerified: json['emailVerified'] is bool
+          ? ((json['emailVerified'] as bool) ? 1 : 0)
+          : (json['emailVerified'] as num?)?.toInt() ?? (json['email_verified'] as num?)?.toInt() ?? 0,
+      phoneVerified: json['phoneVerified'] is bool
+          ? ((json['phoneVerified'] as bool) ? 1 : 0)
+          : (json['phoneVerified'] as num?)?.toInt() ?? (json['phone_verified'] as num?)?.toInt() ?? 0,
+      isActive: json['isActive'] is bool
+          ? ((json['isActive'] as bool) ? 1 : 0)
+          : (json['isActive'] as num?)?.toInt() ?? (json['is_active'] as num?)?.toInt() ?? 1,
     );
   }
 

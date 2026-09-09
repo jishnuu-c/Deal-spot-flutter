@@ -49,26 +49,43 @@ class _AdminLayoutState extends ConsumerState<AdminLayout> {
     AdminMenuItem(route: '/admin/audit-logs', labelEn: 'Audit Logs', labelAr: 'سجل العمليات', icon: Icons.history_edu_outlined),
   ];
 
-  static const List<AdminMenuItem> _storeManagerMenuItems = [
-    AdminMenuItem(route: '/admin', labelEn: 'Store Dashboard', labelAr: 'لوحة المتجر', icon: Icons.dashboard_outlined),
-    AdminMenuItem(route: '/admin/stores', labelEn: 'My Branches', labelAr: 'فروع متجري', icon: Icons.storefront_outlined),
-    AdminMenuItem(route: '/admin/products', labelEn: 'My Products', labelAr: 'منتجات المتجر', icon: Icons.inventory_2_outlined),
-    AdminMenuItem(route: '/admin/offers', labelEn: 'My Offers & Deals', labelAr: 'عروض متجري', icon: Icons.local_offer_outlined),
-    AdminMenuItem(route: '/admin/flyers', labelEn: 'My Flyers', labelAr: 'منشورات متجري', icon: Icons.menu_book_outlined),
-    AdminMenuItem(route: '/admin/coupons', labelEn: 'My Coupons', labelAr: 'كوبونات الخصم', icon: Icons.confirmation_number_outlined),
-  ];
-
-  String _getPageTitle(String location, bool isRtl) {
-    if (location == '/admin') return isRtl ? 'لوحة الإدارة' : 'Dashboard Control';
+  String _getPageTitle(String location, bool isRtl, {String? role}) {
+    if (location == '/admin') {
+      if (role == 'STORE_MANAGER') return isRtl ? 'لوحة المتجر' : 'Store Dashboard';
+      return isRtl ? 'لوحة الإدارة' : 'Dashboard Control';
+    }
+    if (location.startsWith('/admin/stores') && location.contains('/branches')) {
+      return isRtl ? 'فروع المتجر' : 'Store Branches';
+    }
     if (location.startsWith('/admin/partner-requests')) return isRtl ? 'طلبات الشراكة' : 'Partner Requests';
     if (location.startsWith('/admin/cities')) return isRtl ? 'إدارة المدن' : 'Cities Management';
     if (location.startsWith('/admin/categories')) return isRtl ? 'إدارة الأقسام' : 'Categories Management';
     if (location.startsWith('/admin/brands')) return isRtl ? 'إدارة الماركات' : 'Brands Management';
-    if (location.startsWith('/admin/stores')) return isRtl ? 'إدارة المتاجر' : 'Stores Management';
-    if (location.startsWith('/admin/products')) return isRtl ? 'إدارة المنتجات' : 'Products Management';
-    if (location.startsWith('/admin/offers')) return isRtl ? 'إدارة العروض' : 'Offers Management';
-    if (location.startsWith('/admin/flyers')) return isRtl ? 'إدارة المنشورات' : 'Flyers Management';
-    if (location.startsWith('/admin/coupons')) return isRtl ? 'إدارة الكوبونات' : 'Coupons Management';
+    if (location.startsWith('/admin/stores')) {
+      return isRtl
+          ? (role == 'STORE_MANAGER' ? 'فروع متجري' : 'إدارة المتاجر')
+          : (role == 'STORE_MANAGER' ? 'My Branches' : 'Stores Management');
+    }
+    if (location.startsWith('/admin/products')) {
+      return isRtl
+          ? (role == 'STORE_MANAGER' ? 'منتجات المتجر' : 'إدارة المنتجات')
+          : (role == 'STORE_MANAGER' ? 'My Products' : 'Products Management');
+    }
+    if (location.startsWith('/admin/offers')) {
+      return isRtl
+          ? (role == 'STORE_MANAGER' ? 'عروض متجري' : 'إدارة العروض')
+          : (role == 'STORE_MANAGER' ? 'My Offers & Deals' : 'Offers Management');
+    }
+    if (location.startsWith('/admin/flyers')) {
+      return isRtl
+          ? (role == 'STORE_MANAGER' ? 'منشورات متجري' : 'إدارة المنشورات')
+          : (role == 'STORE_MANAGER' ? 'My Flyers' : 'Flyers Management');
+    }
+    if (location.startsWith('/admin/coupons')) {
+      return isRtl
+          ? (role == 'STORE_MANAGER' ? 'كوبونات متجري' : 'إدارة الكوبونات')
+          : (role == 'STORE_MANAGER' ? 'My Coupons' : 'Coupons Management');
+    }
     if (location.startsWith('/admin/users')) return isRtl ? 'إدارة المشرفين' : 'Staff & Admins';
     if (location.startsWith('/admin/notifications')) return isRtl ? 'إدارة الإشعارات' : 'Notifications';
     if (location.startsWith('/admin/audit-logs')) return isRtl ? 'سجل العمليات' : 'Audit Logs';
@@ -84,10 +101,27 @@ class _AdminLayoutState extends ConsumerState<AdminLayout> {
     final authState = ref.watch(authProvider);
     final adminUser = authState.currentAdmin;
     final role = (adminUser?.role ?? 'SUPER_ADMIN').toUpperCase();
-    final menuItems = role == 'STORE_MANAGER' ? _storeManagerMenuItems : _allMenuItems;
+    final storeId = adminUser?.storeId;
+
+    final List<AdminMenuItem> menuItems = role == 'STORE_MANAGER'
+        ? [
+            const AdminMenuItem(route: '/admin', labelEn: 'Store Dashboard', labelAr: 'لوحة المتجر', icon: Icons.dashboard_outlined),
+            AdminMenuItem(
+              route: storeId != null ? '/admin/stores/$storeId/branches' : '/admin/stores',
+              labelEn: 'My Branches',
+              labelAr: 'فروع متجري',
+              icon: Icons.storefront_outlined,
+            ),
+            const AdminMenuItem(route: '/admin/products', labelEn: 'My Products', labelAr: 'منتجات المتجر', icon: Icons.inventory_2_outlined),
+            const AdminMenuItem(route: '/admin/offers', labelEn: 'My Offers & Deals', labelAr: 'عروض متجري', icon: Icons.local_offer_outlined),
+            const AdminMenuItem(route: '/admin/flyers', labelEn: 'My Flyers', labelAr: 'منشورات متجري', icon: Icons.menu_book_outlined),
+            const AdminMenuItem(route: '/admin/coupons', labelEn: 'My Coupons', labelAr: 'كوبونات الخصم', icon: Icons.confirmation_number_outlined),
+          ]
+        : _allMenuItems;
+
     final screenWidth = MediaQuery.of(context).size.width;
     final isDesktop = screenWidth >= 992;
-    final pageTitle = _getPageTitle(location, isRtl);
+    final pageTitle = _getPageTitle(location, isRtl, role: role);
 
     final sidebarWidget = _buildSidebar(
       context: context,
@@ -170,6 +204,7 @@ class _AdminLayoutState extends ConsumerState<AdminLayout> {
     required bool isDark,
     required bool isDesktop,
   }) {
+    final role = (adminUser?.role ?? 'SUPER_ADMIN').toString().toUpperCase();
     return Container(
       height: 64,
       padding: EdgeInsets.symmetric(horizontal: isDesktop ? 24 : 12),
@@ -277,7 +312,11 @@ class _AdminLayoutState extends ConsumerState<AdminLayout> {
                             ),
                           ),
                           Text(
-                            adminUser?.role ?? 'SUPER_ADMIN',
+                            role == 'STORE_MANAGER'
+                                ? (isRtl ? 'مدير المتجر' : 'Store Manager')
+                                : (role == 'SUPER_ADMIN'
+                                    ? (isRtl ? 'المدير العام' : 'Super Administrator')
+                                    : (adminUser?.role ?? 'SUPER_ADMIN')),
                             style: const TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w600,

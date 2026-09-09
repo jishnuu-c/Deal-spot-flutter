@@ -249,4 +249,152 @@ void main() {
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
   });
+
+  testWidgets('OffersCrudScreen on compact mobile screen renders with zero overflow', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(360, 780);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final store = Store(id: 1, nameEn: 'Lulu Hypermarket', nameAr: 'لولو هايبرماركت', cityId: 1, categoryId: 1, logoUrl: '', isActive: 1, isVerified: 1);
+    final city = City(id: 1, nameEn: 'Riyadh', nameAr: 'الرياض', regionCode: 'RUH', latitude: 24.7, longitude: 46.7, isActive: 1);
+    final category = Category(id: 1, nameEn: 'Electronics', nameAr: 'إلكترونيات', iconSlug: 'devices', sortOrder: 1, isActive: 1);
+    final product = Product(id: 10, nameEn: 'Smart TV', nameAr: 'شاشة ذكية', brand: 'Samsung', brandAr: 'سامسونج', sku: 'SAM-TV', barcode: '12345', primaryImageUrl: '', unit: 'pc', unitSize: 1.0, categoryId: 1, isActive: 1);
+    final offer = Offer(
+      id: 1,
+      storeId: 1,
+      productId: 10,
+      categoryId: 1,
+      cityId: 1,
+      titleEn: 'Super Deal 50% Off',
+      titleAr: 'عرض خارق 50%',
+      originalPrice: 1000.0,
+      offerPrice: 500.0,
+      discountPct: 50.0,
+      badgeType: 'FLASH',
+      validFrom: '2026-09-01',
+      validUntil: '2026-09-30',
+      descriptionEn: 'Details',
+      descriptionAr: 'تفاصيل',
+      isFeatured: 0,
+      isFlash: 0,
+      isActive: 1,
+      viewCount: 0,
+      saveCount: 0,
+      store: store,
+      product: product,
+      category: category,
+      city: city,
+    );
+
+    final container = ProviderContainer(
+      overrides: [
+        offerRepositoryProvider.overrideWith((ref) => MockOfferNotifier([offer])),
+        storeRepositoryProvider.overrideWith((ref) => MockStoreNotifier([store])),
+        cityRepositoryProvider.overrideWith((ref) => MockCityNotifier([city])),
+        categoryRepositoryProvider.overrideWith((ref) => MockCategoryNotifier([category])),
+        productRepositoryProvider.overrideWith((ref) => MockProductNotifier([product])),
+      ],
+    );
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          home: Scaffold(
+            body: OffersCrudScreen(),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    // Verify rendering without overflow
+    expect(find.text('Super Deal 50% Off'), findsOneWidget);
+    expect(find.text('500.0 SAR'), findsOneWidget);
+    expect(find.text('Active'), findsOneWidget);
+
+    // Open Edit modal on compact mobile screen
+    await tester.scrollUntilVisible(find.byIcon(Icons.edit_outlined), 200, scrollable: find.byType(Scrollable).first);
+    await tester.tap(find.byIcon(Icons.edit_outlined));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Edit Promotion Deal'), findsOneWidget);
+    expect(find.text('50%'), findsOneWidget);
+
+    // Close modal
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('AppCustomSelect searchable dropdown opens and filters options properly', (WidgetTester tester) async {
+    final store = Store(
+      id: 1,
+      nameEn: 'Panda Hypermarket',
+      nameAr: 'بندة هايبرماركت',
+      logoUrl: '',
+      cityId: 1,
+      categoryId: 1,
+      isActive: 1,
+      isVerified: 1,
+    );
+    final category1 = Category(
+      id: 1,
+      nameEn: 'Electronics',
+      nameAr: 'إلكترونيات',
+      iconSlug: 'devices',
+      isActive: 1,
+      sortOrder: 1,
+    );
+    final category2 = Category(
+      id: 2,
+      nameEn: 'Bedding',
+      nameAr: 'المفارش',
+      iconSlug: 'bed',
+      isActive: 1,
+      sortOrder: 2,
+    );
+    final city = City(id: 1, nameEn: 'Muscat', nameAr: 'مسقط', regionCode: 'OM-MU', latitude: 23.5880, longitude: 58.3829, isActive: 1);
+
+    final container = ProviderContainer(
+      overrides: [
+        offerRepositoryProvider.overrideWith((ref) => MockOfferNotifier([])),
+        storeRepositoryProvider.overrideWith((ref) => MockStoreNotifier([store])),
+        cityRepositoryProvider.overrideWith((ref) => MockCityNotifier([city])),
+        categoryRepositoryProvider.overrideWith((ref) => MockCategoryNotifier([category1, category2])),
+        productRepositoryProvider.overrideWith((ref) => MockProductNotifier([])),
+      ],
+    );
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          home: Scaffold(
+            body: OffersCrudScreen(),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    // Click Create Offer button to open modal
+    await tester.tap(find.byIcon(Icons.add_circle_outline).first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Create Promotion Deal'), findsOneWidget);
+
+    // Verify CustomSelect displays Retail Partner Store with store name
+    expect(find.text('Panda Hypermarket'), findsWidgets);
+
+    // Verify CustomSelect displays Category with initial placeholder/selection
+    expect(find.text('Electronics'), findsWidgets);
+
+    // Close modal
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+  });
 }
+

@@ -37,7 +37,7 @@ class Brand extends Equatable {
     }
 
     return Brand(
-      id: json['id'] as int? ?? 0,
+      id: (json['id'] as num?)?.toInt() ?? 0,
       nameEn: json['nameEn'] as String? ?? json['name_en'] as String? ?? '',
       nameAr: json['nameAr'] as String? ?? json['name_ar'] as String? ?? '',
       descriptionEn: json['descriptionEn'] as String? ?? json['description_en'] as String?,

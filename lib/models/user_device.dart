@@ -45,14 +45,16 @@ class UserDevice extends Equatable {
 
   factory UserDevice.fromJson(Map<String, dynamic> json) {
     return UserDevice(
-      id: json['id'] as int,
-      userId: json['user_id'] as int,
-      platform: json['platform'] as String,
-      deviceToken: json['device_token'] as String,
-      deviceModel: json['device_model'] as String?,
-      appVersion: json['app_version'] as String?,
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      userId: (json['userId'] as num?)?.toInt() ?? (json['user_id'] as num?)?.toInt() ?? 0,
+      platform: (json['platform'] ?? '').toString(),
+      deviceToken: (json['deviceToken'] ?? json['device_token'] ?? '').toString(),
+      deviceModel: json['deviceModel'] as String? ?? json['device_model'] as String?,
+      appVersion: json['appVersion'] as String? ?? json['app_version'] as String?,
       locale: json['locale'] as String?,
-      isActive: json['is_active'] as int,
+      isActive: json['isActive'] is bool
+          ? ((json['isActive'] as bool) ? 1 : 0)
+          : (json['isActive'] as num?)?.toInt() ?? (json['is_active'] as num?)?.toInt() ?? 1,
     );
   }
 

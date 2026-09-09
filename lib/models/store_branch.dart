@@ -14,6 +14,8 @@ class StoreBranch extends Equatable {
   final int isActive;
   final String? contactPhone;
   final String? addressLine;
+  final String? addressEn;
+  final String? addressAr;
 
   // Joins
   final Store? store;
@@ -31,11 +33,14 @@ class StoreBranch extends Equatable {
     required this.isActive,
     this.contactPhone,
     this.addressLine,
+    this.addressEn,
+    this.addressAr,
     this.store,
     this.city,
   });
 
   bool get active => isActive == 1;
+  bool get is24Hours => (openTime == '00:00:00' || openTime == '00:00') && (closeTime == '23:59:59' || closeTime == '23:59' || closeTime == '00:00:00' || closeTime == '00:00');
   String? get cityNameEn => city?.nameEn;
   String? get cityNameAr => city?.nameAr;
 
@@ -51,6 +56,8 @@ class StoreBranch extends Equatable {
     int? isActive,
     String? contactPhone,
     String? addressLine,
+    String? addressEn,
+    String? addressAr,
     Store? store,
     City? city,
   }) {
@@ -66,6 +73,8 @@ class StoreBranch extends Equatable {
       isActive: isActive ?? this.isActive,
       contactPhone: contactPhone ?? this.contactPhone,
       addressLine: addressLine ?? this.addressLine,
+      addressEn: addressEn ?? this.addressEn,
+      addressAr: addressAr ?? this.addressAr,
       store: store ?? this.store,
       city: city ?? this.city,
     );
@@ -75,6 +84,10 @@ class StoreBranch extends Equatable {
     final activeVal = json['active'] is bool
         ? ((json['active'] as bool) ? 1 : 0)
         : (json['is_active'] as num?)?.toInt() ?? (json['isActive'] as num?)?.toInt() ?? 1;
+
+    final addrEn = json['addressEn'] as String? ?? json['address_en'] as String?;
+    final addrAr = json['addressAr'] as String? ?? json['address_ar'] as String?;
+    final addrLine = addrEn ?? addrAr ?? json['address_line'] as String? ?? json['addressLine'] as String?;
 
     return StoreBranch(
       id: (json['id'] as num?)?.toInt() ?? 0,
@@ -87,7 +100,9 @@ class StoreBranch extends Equatable {
       closeTime: json['close_time'] as String? ?? json['closeTime'] as String? ?? '22:00:00',
       isActive: activeVal,
       contactPhone: json['phone'] as String? ?? json['contact_phone'] as String? ?? json['contactPhone'] as String?,
-      addressLine: json['addressEn'] as String? ?? json['address_line'] as String? ?? json['addressLine'] as String? ?? json['addressAr'] as String?,
+      addressLine: addrLine,
+      addressEn: addrEn,
+      addressAr: addrAr,
       store: json['store'] != null ? Store.fromJson(json['store'] as Map<String, dynamic>) : null,
       city: json['city'] != null ? City.fromJson(json['city'] as Map<String, dynamic>) : null,
     );
@@ -106,6 +121,8 @@ class StoreBranch extends Equatable {
       'is_active': isActive,
       'contact_phone': contactPhone,
       'address_line': addressLine,
+      'addressEn': addressEn,
+      'addressAr': addressAr,
       if (store != null) 'store': store!.toJson(),
       if (city != null) 'city': city!.toJson(),
     };
@@ -124,6 +141,8 @@ class StoreBranch extends Equatable {
         isActive,
         contactPhone,
         addressLine,
+        addressEn,
+        addressAr,
         store,
         city,
       ];

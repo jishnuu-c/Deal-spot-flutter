@@ -29,10 +29,10 @@ class OfferImage extends Equatable {
 
   factory OfferImage.fromJson(Map<String, dynamic> json) {
     return OfferImage(
-      id: json['id'] as int,
-      offerId: json['offer_id'] as int,
-      imageUrl: json['image_url'] as String,
-      sortOrder: json['sort_order'] as int,
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      offerId: (json['offerId'] as num?)?.toInt() ?? (json['offer_id'] as num?)?.toInt() ?? 0,
+      imageUrl: (json['imageUrl'] ?? json['image_url'] ?? '').toString(),
+      sortOrder: (json['sortOrder'] as num?)?.toInt() ?? (json['sort_order'] as num?)?.toInt() ?? 1,
     );
   }
 

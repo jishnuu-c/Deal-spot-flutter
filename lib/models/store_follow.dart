@@ -36,11 +36,11 @@ class StoreFollow extends Equatable {
 
   factory StoreFollow.fromJson(Map<String, dynamic> json) {
     return StoreFollow(
-      id: json['id'] as int,
-      userId: json['user_id'] as int,
-      storeId: json['store_id'] as int,
-      followedAt: json['followed_at'] as String,
-      store: json['store'] != null ? Store.fromJson(json['store'] as Map<String, dynamic>) : null,
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      userId: (json['userId'] as num?)?.toInt() ?? (json['user_id'] as num?)?.toInt() ?? 0,
+      storeId: (json['storeId'] as num?)?.toInt() ?? (json['store_id'] as num?)?.toInt() ?? 0,
+      followedAt: (json['followedAt'] ?? json['followed_at'] ?? '').toString(),
+      store: json['store'] != null && json['store'] is Map ? Store.fromJson(json['store'] as Map<String, dynamic>) : null,
     );
   }
 

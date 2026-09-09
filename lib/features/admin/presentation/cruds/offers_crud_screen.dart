@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart' hide Category;
+import 'package:image_picker/image_picker.dart';
 import '../../../../core/config/app_config.dart';
 import '../../../../core/services/auth_repository.dart';
 import '../../../../core/services/offer_repository.dart';
@@ -12,7 +12,10 @@ import '../../../../core/services/product_repository.dart';
 import '../../../../core/services/city_repository.dart';
 import '../../../../core/services/category_repository.dart';
 import '../../../../core/utils/translation_service.dart';
+import '../../../../core/widgets/app_network_image.dart';
+import '../../../../core/widgets/custom_select_widget.dart';
 import '../../../../models/models.dart';
+import '../widgets/crud_loading_widget.dart';
 
 class OffersCrudScreen extends ConsumerStatefulWidget {
   const OffersCrudScreen({super.key});
@@ -43,11 +46,13 @@ class _OffersCrudScreenState extends ConsumerState<OffersCrudScreen> {
 
   static const List<Map<String, String>> _badgeFilterOptions = [
     {'id': '', 'nameEn': 'All Badges', 'nameAr': 'جميع الشارات'},
-    {'id': 'NONE', 'nameEn': 'NONE', 'nameAr': 'بدون'},
+    {'id': 'NONE', 'nameEn': 'Standard (NONE)', 'nameAr': 'عادي'},
     {'id': 'FEATURED', 'nameEn': 'FEATURED', 'nameAr': 'مميز'},
-    {'id': 'FLASH', 'nameEn': 'FLASH', 'nameAr': 'خاطف'},
-    {'id': 'BOGO', 'nameEn': 'BOGO', 'nameAr': 'BOGO'},
+    {'id': 'FLASH', 'nameEn': 'FLASH', 'nameAr': 'صفقة خاطفة'},
+    {'id': 'BOGO', 'nameEn': 'BOGO', 'nameAr': 'اشتر 1 واحصل 1'},
     {'id': 'PROMO', 'nameEn': 'PROMO', 'nameAr': 'ترويجي'},
+    {'id': 'CLEARANCE', 'nameEn': 'CLEARANCE', 'nameAr': 'تصفية'},
+    {'id': 'PERCENT_OFF', 'nameEn': 'PERCENT_OFF', 'nameAr': 'نسبة خصم'},
   ];
 
   static const List<Map<String, String>> _statusFilterOptions = [
@@ -99,7 +104,7 @@ class _OffersCrudScreenState extends ConsumerState<OffersCrudScreen> {
   void _onScroll() {
     if (_scrollController.hasClients) {
       final yOffset = _scrollController.position.pixels;
-      final showTop = yOffset > 400;
+      final showTop = yOffset > 300;
       if (showTop != _showScrollTop) {
         setState(() => _showScrollTop = showTop);
       }
@@ -227,7 +232,12 @@ class _OffersCrudScreenState extends ConsumerState<OffersCrudScreen> {
           children: [
             const Icon(Icons.more_time, color: Color(0xFFD97706), size: 28),
             const SizedBox(width: 10),
-            Text(isEn ? 'Extend Offer Expiration?' : 'تمديد فترة العرض؟', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            Expanded(
+              child: Text(
+                isEn ? 'Extend Offer Expiration?' : 'تمديد فترة العرض؟',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+            ),
           ],
         ),
         content: Text(
@@ -258,7 +268,7 @@ class _OffersCrudScreenState extends ConsumerState<OffersCrudScreen> {
                           ? (isEn ? 'Offer extended by +7 days.' : 'تم تمديد العرض بنجاح بـ +7 أيام.')
                           : (isEn ? 'Failed to extend offer.' : 'فشل تمديد العرض.'),
                     ),
-                    backgroundColor: success ? Colors.green : Colors.red,
+                    backgroundColor: success ? const Color(0xFF16A34A) : Colors.red,
                   ),
                 );
                 _loadInitialOffers();
@@ -281,7 +291,12 @@ class _OffersCrudScreenState extends ConsumerState<OffersCrudScreen> {
           children: [
             const Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 28),
             const SizedBox(width: 10),
-            Text(isEn ? 'Are you sure?' : 'هل أنت متأكد؟', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            Expanded(
+              child: Text(
+                isEn ? 'Are you sure?' : 'هل أنت متأكد؟',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+            ),
           ],
         ),
         content: Text(
@@ -308,7 +323,7 @@ class _OffersCrudScreenState extends ConsumerState<OffersCrudScreen> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(isEn ? 'Offer deleted successfully.' : 'تم حذف العرض بنجاح.'),
-                    backgroundColor: Colors.green,
+                    backgroundColor: const Color(0xFF16A34A),
                   ),
                 );
                 _loadInitialOffers();
@@ -323,9 +338,13 @@ class _OffersCrudScreenState extends ConsumerState<OffersCrudScreen> {
 
   void _showOfferModal([Offer? offer]) {
     final isEn = ref.read(translationProvider) == AppLanguage.en;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final stores = ref.read(storeRepositoryProvider).stores;
     final cities = ref.read(cityRepositoryProvider).cities;
     final categories = ref.read(categoryRepositoryProvider);
+    final authState = ref.read(authProvider);
+    final adminUser = authState.currentAdmin;
+    final isStoreManager = adminUser?.role == 'STORE_MANAGER' && adminUser?.storeId != null;
 
     final titleEnCtrl = TextEditingController(text: offer?.titleEn ?? '');
     final titleArCtrl = TextEditingController(text: offer?.titleAr ?? '');
@@ -344,9 +363,15 @@ class _OffersCrudScreenState extends ConsumerState<OffersCrudScreen> {
     final fromCtrl = TextEditingController(text: offer?.validFrom.isNotEmpty == true ? offer!.validFrom.split('T')[0] : todayStr);
     final untilCtrl = TextEditingController(text: offer?.validUntil.isNotEmpty == true ? offer!.validUntil.split('T')[0] : nextWeekStr);
 
-    int? selectedStoreId = offer?.storeId != null && stores.any((s) => s.id == offer!.storeId)
-        ? offer!.storeId
-        : (stores.isNotEmpty ? stores[0].id : null);
+    int? selectedStoreId;
+    if (isStoreManager) {
+      selectedStoreId = adminUser!.storeId;
+    } else if (offer?.storeId != null && stores.any((s) => s.id == offer!.storeId)) {
+      selectedStoreId = offer!.storeId;
+    } else if (stores.isNotEmpty) {
+      selectedStoreId = stores[0].id;
+    }
+
     int? selectedCategoryId = offer?.categoryId != null && categories.any((c) => c.id == offer!.categoryId)
         ? offer!.categoryId
         : (categories.isNotEmpty ? categories[0].id : null);
@@ -368,6 +393,10 @@ class _OffersCrudScreenState extends ConsumerState<OffersCrudScreen> {
     Product? selectedProduct = offer?.product;
     int? selectedProductId = offer?.productId;
 
+    if (selectedProduct == null && selectedProductId != null) {
+      selectedProduct = ref.read(productRepositoryProvider.notifier).getProductById(selectedProductId);
+    }
+
     List<XFile> pickedImages = [];
     List<Uint8List> pickedImageBytes = [];
     String? existingImageUrl = offer?.primaryImageUrl.isNotEmpty == true ? offer!.primaryImageUrl : null;
@@ -384,6 +413,16 @@ class _OffersCrudScreenState extends ConsumerState<OffersCrudScreen> {
     }
     calcDiscount();
 
+    VoidCallback? updateDiscountCallback;
+    origPriceCtrl.addListener(() {
+      calcDiscount();
+      updateDiscountCallback?.call();
+    });
+    offerPriceCtrl.addListener(() {
+      calcDiscount();
+      updateDiscountCallback?.call();
+    });
+
     bool isSaving = false;
 
     // Autocomplete product state
@@ -399,6 +438,10 @@ class _OffersCrudScreenState extends ConsumerState<OffersCrudScreen> {
       builder: (dialogCtx) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
+            updateDiscountCallback = () {
+              if (dialogCtx.mounted) setDialogState(() {});
+            };
+
             void onProductSearchInput(String query) {
               productSearchDebounce?.cancel();
               productSearchDebounce = Timer(const Duration(milliseconds: 250), () async {
@@ -429,1070 +472,1322 @@ class _OffersCrudScreenState extends ConsumerState<OffersCrudScreen> {
               });
             }
 
-            origPriceCtrl.addListener(() {
-              setDialogState(() => calcDiscount());
-            });
-            offerPriceCtrl.addListener(() {
-              setDialogState(() => calcDiscount());
-            });
+            final screenWidth = MediaQuery.of(context).size.width;
+            final dialogWidth = screenWidth > 860 ? 800.0 : (screenWidth > 640 ? 640.0 : double.maxFinite);
+            final isModalNarrow = screenWidth < 680;
 
-            return Dialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 860, maxHeight: 900),
-                child: LayoutBuilder(
-                  builder: (ctx, constraints) {
-                    final isModalNarrow = constraints.maxWidth < 600;
+            final cardBgColor = isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC);
+            final cardBorderColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
 
-                    return Column(
+            if (selectedProduct == null && selectedProductId != null) {
+              ref.read(productRepositoryProvider.notifier).fetchProductById(selectedProductId!).then((p) {
+                if (p != null && dialogCtx.mounted && selectedProduct == null) {
+                  setDialogState(() {
+                    selectedProduct = p;
+                  });
+                }
+              });
+            }
+
+            return Directionality(
+              textDirection: isEn ? TextDirection.ltr : TextDirection.rtl,
+              child: AlertDialog(
+                backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                titlePadding: const EdgeInsets.fromLTRB(22, 20, 22, 14),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
+                actionsPadding: const EdgeInsets.fromLTRB(22, 14, 22, 20),
+                title: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF16A34A).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.local_offer, color: Color(0xFF16A34A), size: 24),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        offer == null
+                            ? (isEn ? 'Create Promotion Deal' : 'إنشاء عرض ترويجي جديد')
+                            : (isEn ? 'Edit Promotion Deal' : 'تعديل العرض الترويجي'),
+                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(dialogCtx),
+                    ),
+                  ],
+                ),
+                content: SizedBox(
+                  width: dialogWidth,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Modal Header
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
-                          decoration: BoxDecoration(
-                            border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+                        // 1. Bilingual Titles
+                        if (isModalNarrow) ...[
+                          Text(isEn ? 'Offer Title (EN) *' : 'عنوان العرض (الإنجليزية) *', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: titleEnCtrl,
+                            decoration: InputDecoration(
+                              hintText: isEn ? 'e.g. 50% Off Smart TVs' : 'مثال: خصم 50% على الشاشات الذكية',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            ),
                           ),
-                          child: Row(
+                          const SizedBox(height: 14),
+                          Text(isEn ? 'Offer Title (AR) *' : 'عنوان العرض (العربية) *', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: titleArCtrl,
+                            decoration: InputDecoration(
+                              hintText: isEn ? 'Arabic title...' : 'مثال: خصم 50% على الشاشات الذكية',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            ),
+                          ),
+                        ] else
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Icon(Icons.local_offer, color: Theme.of(context).primaryColor, size: 24),
-                              ),
-                              const SizedBox(width: 12),
                               Expanded(
-                                child: Text(
-                                  offer == null
-                                      ? (isEn ? 'Create Promotion Deal' : 'إنشاء عرض ترويجي جديد')
-                                      : (isEn ? 'Edit Promotion Deal' : 'تعديل العرض الترويجي'),
-                                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(isEn ? 'Offer Title (EN) *' : 'عنوان العرض (الإنجليزية) *', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                    const SizedBox(height: 6),
+                                    TextField(
+                                      controller: titleEnCtrl,
+                                      decoration: InputDecoration(
+                                        hintText: isEn ? 'e.g. 50% Off Smart TVs' : 'مثال: خصم 50% على الشاشات الذكية',
+                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              IconButton(
-                                icon: const Icon(Icons.close),
-                                onPressed: () => Navigator.pop(dialogCtx),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(isEn ? 'Offer Title (AR) *' : 'عنوان العرض (العربية) *', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                    const SizedBox(height: 6),
+                                    TextField(
+                                      controller: titleArCtrl,
+                                      decoration: InputDecoration(
+                                        hintText: isEn ? 'Arabic title...' : 'مثال: خصم 50% على الشاشات الذكية',
+                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
-                        ),
+                        const SizedBox(height: 18),
 
-                        // Modal Scrollable Body
-                        Expanded(
-                          child: SingleChildScrollView(
-                            padding: const EdgeInsets.all(24),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // 1. Bilingual Titles
-                                if (isModalNarrow) ...[
-                                  Text(isEn ? 'Offer Title (EN) *' : 'عنوان العرض (الإنجليزية) *', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                  const SizedBox(height: 6),
-                                  TextField(
-                                    controller: titleEnCtrl,
-                                    decoration: InputDecoration(
-                                      hintText: isEn ? 'e.g. 50% Off Smart TVs' : 'مثال: خصم 50% على الشاشات الذكية',
-                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 14),
-                                  Text(isEn ? 'Offer Title (AR) *' : 'عنوان العرض (العربية) *', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                  const SizedBox(height: 6),
-                                  TextField(
-                                    controller: titleArCtrl,
-                                    decoration: InputDecoration(
-                                      hintText: isEn ? 'Arabic title...' : 'مثال: خصم 50% على الشاشات الذكية',
-                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                    ),
-                                  ),
-                                ] else
-                                  Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(isEn ? 'Offer Title (EN) *' : 'عنوان العرض (الإنجليزية) *', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                            const SizedBox(height: 6),
-                                            TextField(
-                                              controller: titleEnCtrl,
-                                              decoration: InputDecoration(
-                                                hintText: isEn ? 'e.g. 50% Off Smart TVs' : 'مثال: خصم 50% على الشاشات الذكية',
-                                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                                                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(isEn ? 'Offer Title (AR) *' : 'عنوان العرض (العربية) *', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                            const SizedBox(height: 6),
-                                            TextField(
-                                              controller: titleArCtrl,
-                                              decoration: InputDecoration(
-                                                hintText: isEn ? 'Arabic title...' : 'مثال: خصم 50% على الشاشات الذكية',
-                                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                                                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                const SizedBox(height: 18),
-
-                                // 2. Store, Category, City Scope
-                                if (isModalNarrow) ...[
-                                  Text(isEn ? 'Retail Partner Store *' : 'المتجر الشريك *', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                  const SizedBox(height: 6),
-                                  DropdownButtonFormField<int>(
-                                    value: selectedStoreId,
-                                    isExpanded: true,
-                                    decoration: InputDecoration(
-                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                    ),
-                                    items: stores.map((s) => DropdownMenuItem(value: s.id, child: Text(isEn ? s.nameEn : (s.nameAr.isNotEmpty ? s.nameAr : s.nameEn), overflow: TextOverflow.ellipsis))).toList(),
-                                    onChanged: (val) => setDialogState(() => selectedStoreId = val),
-                                  ),
-                                  const SizedBox(height: 14),
-                                  Text(isEn ? 'Category *' : 'القسم الرئيسي *', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                  const SizedBox(height: 6),
-                                  DropdownButtonFormField<int>(
-                                    value: selectedCategoryId,
-                                    isExpanded: true,
-                                    decoration: InputDecoration(
-                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                    ),
-                                    items: categories.map((c) => DropdownMenuItem(value: c.id, child: Text(isEn ? c.nameEn : (c.nameAr.isNotEmpty ? c.nameAr : c.nameEn), overflow: TextOverflow.ellipsis))).toList(),
-                                    onChanged: (val) => setDialogState(() => selectedCategoryId = val),
-                                  ),
-                                  const SizedBox(height: 14),
-                                  Text(isEn ? 'City Scope *' : 'المدينة *', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                  const SizedBox(height: 6),
-                                  DropdownButtonFormField<int>(
-                                    value: selectedCityId,
-                                    isExpanded: true,
-                                    decoration: InputDecoration(
-                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                    ),
-                                    items: cities.map((c) => DropdownMenuItem(value: c.id, child: Text(isEn ? c.nameEn : (c.nameAr.isNotEmpty ? c.nameAr : c.nameEn), overflow: TextOverflow.ellipsis))).toList(),
-                                    onChanged: (val) => setDialogState(() => selectedCityId = val),
-                                  ),
-                                ] else
-                                  Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(isEn ? 'Retail Partner Store *' : 'المتجر الشريك *', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                            const SizedBox(height: 6),
-                                            DropdownButtonFormField<int>(
-                                              value: selectedStoreId,
-                                              isExpanded: true,
-                                              decoration: InputDecoration(
-                                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                                                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                              ),
-                                              items: stores.map((s) => DropdownMenuItem(value: s.id, child: Text(isEn ? s.nameEn : (s.nameAr.isNotEmpty ? s.nameAr : s.nameEn), overflow: TextOverflow.ellipsis))).toList(),
-                                              onChanged: (val) => setDialogState(() => selectedStoreId = val),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(isEn ? 'Category *' : 'القسم الرئيسي *', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                            const SizedBox(height: 6),
-                                            DropdownButtonFormField<int>(
-                                              value: selectedCategoryId,
-                                              isExpanded: true,
-                                              decoration: InputDecoration(
-                                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                                                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                              ),
-                                              items: categories.map((c) => DropdownMenuItem(value: c.id, child: Text(isEn ? c.nameEn : (c.nameAr.isNotEmpty ? c.nameAr : c.nameEn), overflow: TextOverflow.ellipsis))).toList(),
-                                              onChanged: (val) => setDialogState(() => selectedCategoryId = val),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(isEn ? 'City Scope *' : 'المدينة *', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                            const SizedBox(height: 6),
-                                            DropdownButtonFormField<int>(
-                                              value: selectedCityId,
-                                              isExpanded: true,
-                                              decoration: InputDecoration(
-                                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                                                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                              ),
-                                              items: cities.map((c) => DropdownMenuItem(value: c.id, child: Text(isEn ? c.nameEn : (c.nameAr.isNotEmpty ? c.nameAr : c.nameEn), overflow: TextOverflow.ellipsis))).toList(),
-                                              onChanged: (val) => setDialogState(() => selectedCityId = val),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                const SizedBox(height: 20),
-
-                                // 3. Catalog Linked Product Section
-                                Container(
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey.shade50,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: Colors.grey.shade200),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.inventory_2_outlined, size: 18, color: Colors.grey),
-                                          const SizedBox(width: 6),
-                                          Expanded(
-                                            child: Text(
-                                              isEn ? 'Catalog Linked Product (Optional)' : 'ربط بمنتج من الدليل (اختياري)',
-                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                                            ),
-                                          ),
-                                          if (isSearchingProducts)
-                                            Row(
-                                              children: [
-                                                const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2)),
-                                                const SizedBox(width: 6),
-                                                Text(isEn ? 'Searching...' : 'جاري البحث...', style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                                              ],
-                                            ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 12),
-
-                                      // If Product Selected: Show Tile Card
-                                      if (selectedProduct != null)
-                                        Container(
-                                          padding: const EdgeInsets.all(12),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            borderRadius: BorderRadius.circular(10),
-                                            border: Border.all(color: Theme.of(context).primaryColor.withValues(alpha: 0.3)),
-                                          ),
-                                          child: Row(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Container(
-                                                width: 56,
-                                                height: 56,
-                                                decoration: BoxDecoration(
-                                                  borderRadius: BorderRadius.circular(8),
-                                                  border: Border.all(color: Colors.grey.shade300),
-                                                  image: selectedProduct!.primaryImageUrl.isNotEmpty
-                                                      ? DecorationImage(
-                                                          image: NetworkImage(AppConfig.normalizeImageUrl(selectedProduct!.primaryImageUrl)),
-                                                          fit: BoxFit.cover,
-                                                        )
-                                                      : null,
-                                                ),
-                                                child: selectedProduct!.primaryImageUrl.isEmpty
-                                                    ? const Icon(Icons.shopping_bag_outlined, color: Colors.grey)
-                                                    : null,
-                                              ),
-                                              const SizedBox(width: 12),
-                                              Expanded(
-                                                child: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                                  children: [
-                                                    Row(
-                                                      children: [
-                                                        Expanded(
-                                                          child: Text(
-                                                            isEn ? selectedProduct!.nameEn : (selectedProduct!.nameAr.isNotEmpty ? selectedProduct!.nameAr : selectedProduct!.nameEn),
-                                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                                                          ),
-                                                        ),
-                                                        IconButton(
-                                                          icon: const Icon(Icons.close, size: 18, color: Colors.red),
-                                                          onPressed: () => selectProduct(null),
-                                                          tooltip: isEn ? 'Remove link' : 'إلغاء الربط',
-                                                        ),
-                                                      ],
-                                                    ),
-                                                    Wrap(
-                                                      spacing: 6,
-                                                      runSpacing: 4,
-                                                      children: [
-                                                        if (selectedProduct!.brand.isNotEmpty)
-                                                          Container(
-                                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                            decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(4)),
-                                                            child: Text(selectedProduct!.brand, style: TextStyle(fontSize: 11, color: Colors.blue.shade800, fontWeight: FontWeight.bold)),
-                                                          ),
-                                                        if (selectedProduct!.sku.isNotEmpty)
-                                                          Container(
-                                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                            decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(4)),
-                                                            child: Text('SKU: ${selectedProduct!.sku}', style: const TextStyle(fontSize: 11, fontFamily: 'monospace')),
-                                                          ),
-                                                        if (selectedProduct!.unit.isNotEmpty)
-                                                          Container(
-                                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                            decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(4)),
-                                                            child: Text('${selectedProduct!.unitSize} ${selectedProduct!.unit}', style: TextStyle(fontSize: 11, color: Colors.green.shade800)),
-                                                          ),
-                                                      ],
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-
-                                      // If No Product Selected: Show Search Autocomplete
-                                      if (selectedProduct == null) ...[
-                                        TextField(
-                                          controller: productSearchCtrl,
-                                          onChanged: onProductSearchInput,
-                                          onTap: () {
-                                            if (productOptions.isEmpty) {
-                                              onProductSearchInput('');
-                                            } else {
-                                              setDialogState(() => isProductDropdownOpen = true);
-                                            }
-                                          },
-                                          decoration: InputDecoration(
-                                            hintText: isEn ? 'Search product by name, brand, SKU or barcode...' : 'ابحث باسم المنتج، الماركة، الرمز (SKU) أو الباركود...',
-                                            prefixIcon: const Icon(Icons.search, size: 20),
-                                            suffixIcon: productSearchCtrl.text.isNotEmpty
-                                                ? IconButton(
-                                                    icon: const Icon(Icons.clear, size: 18),
-                                                    onPressed: () {
-                                                      productSearchCtrl.clear();
-                                                      onProductSearchInput('');
-                                                    },
-                                                  )
-                                                : null,
-                                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                          ),
-                                        ),
-                                        if (isProductDropdownOpen)
-                                          Container(
-                                            constraints: const BoxConstraints(maxHeight: 220),
-                                            margin: const EdgeInsets.only(top: 8),
-                                            decoration: BoxDecoration(
-                                              color: Colors.white,
-                                              borderRadius: BorderRadius.circular(8),
-                                              border: Border.all(color: Colors.grey.shade300),
-                                              boxShadow: [
-                                                BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 10, offset: const Offset(0, 4)),
-                                              ],
-                                            ),
-                                            child: ListView(
-                                              shrinkWrap: true,
-                                              children: [
-                                                // General Option
-                                                ListTile(
-                                                  dense: true,
-                                                  leading: const CircleAvatar(
-                                                    radius: 16,
-                                                    backgroundColor: Color(0xFFF1F5F9),
-                                                    child: Icon(Icons.storefront, size: 18, color: Colors.blueGrey),
-                                                  ),
-                                                  title: Text(isEn ? 'General Store Promotion' : 'عرض عام للمتجر', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                                  subtitle: Text(isEn ? 'No specific catalog product linked' : 'بدون ربط بمنتج محدد من الدليل', style: const TextStyle(fontSize: 11)),
-                                                  trailing: const Icon(Icons.check, color: Colors.green, size: 18),
-                                                  onTap: () => selectProduct(null),
-                                                ),
-                                                const Divider(height: 1),
-                                                ...productOptions.map((prod) => ListTile(
-                                                      dense: true,
-                                                      leading: Container(
-                                                        width: 36,
-                                                        height: 36,
-                                                        decoration: BoxDecoration(
-                                                          borderRadius: BorderRadius.circular(6),
-                                                          border: Border.all(color: Colors.grey.shade300),
-                                                          image: prod.primaryImageUrl.isNotEmpty
-                                                              ? DecorationImage(image: NetworkImage(AppConfig.normalizeImageUrl(prod.primaryImageUrl)), fit: BoxFit.cover)
-                                                              : null,
-                                                        ),
-                                                        child: prod.primaryImageUrl.isEmpty ? const Icon(Icons.shopping_bag, size: 18, color: Colors.grey) : null,
-                                                      ),
-                                                      title: Text(isEn ? prod.nameEn : (prod.nameAr.isNotEmpty ? prod.nameAr : prod.nameEn), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                                      subtitle: Text('SKU: ${prod.sku} | ${prod.brand}', style: const TextStyle(fontSize: 11)),
-                                                      trailing: const Icon(Icons.add_circle_outline, color: Colors.orange, size: 20),
-                                                      onTap: () => selectProduct(prod),
-                                                    )),
-                                                if (!isSearchingProducts && productOptions.isEmpty)
-                                                  Padding(
-                                                    padding: const EdgeInsets.all(16),
-                                                    child: Center(
-                                                      child: Text(isEn ? 'No catalog products match your search.' : 'لا توجد منتجات مطابقة في الدليل.', style: const TextStyle(color: Colors.grey, fontSize: 13)),
-                                                    ),
-                                                  ),
-                                              ],
-                                            ),
-                                          ),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 20),
-
-                                // 4. Pricing Card with Auto Computed Discount
-                                Container(
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey.shade50,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: Colors.grey.shade200),
-                                  ),
-                                  child: isModalNarrow
-                                      ? Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(isEn ? 'Original Price (SAR) *' : 'السعر الأصلي (ر.س) *', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                            const SizedBox(height: 6),
-                                            TextField(
-                                              controller: origPriceCtrl,
-                                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                              decoration: InputDecoration(
-                                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                                                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                              ),
-                                            ),
-                                            const SizedBox(height: 14),
-                                            Text(isEn ? 'Offer Price (SAR) *' : 'سعر العرض (ر.س) *', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                            const SizedBox(height: 6),
-                                            TextField(
-                                              controller: offerPriceCtrl,
-                                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                              decoration: InputDecoration(
-                                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                                                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                              ),
-                                            ),
-                                            const SizedBox(height: 14),
-                                            Text(isEn ? 'Discount % (Auto Calculated)' : 'نسبة الخصم % (محسوبة تلقائياً)', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                            const SizedBox(height: 6),
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                              decoration: BoxDecoration(
-                                                color: Colors.white,
-                                                borderRadius: BorderRadius.circular(8),
-                                                border: Border.all(color: Theme.of(context).primaryColor, style: BorderStyle.solid),
-                                              ),
-                                              alignment: Alignment.center,
-                                              child: Text(
-                                                '$discountPct%',
-                                                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Theme.of(context).primaryColor),
-                                              ),
-                                            ),
-                                          ],
-                                        )
-                                      : Row(
-                                          children: [
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(isEn ? 'Original Price (SAR) *' : 'السعر الأصلي (ر.س) *', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                                  const SizedBox(height: 6),
-                                                  TextField(
-                                                    controller: origPriceCtrl,
-                                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                                    decoration: InputDecoration(
-                                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                                                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            const SizedBox(width: 16),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(isEn ? 'Offer Price (SAR) *' : 'سعر العرض (ر.س) *', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                                  const SizedBox(height: 6),
-                                                  TextField(
-                                                    controller: offerPriceCtrl,
-                                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                                    decoration: InputDecoration(
-                                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                                                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            const SizedBox(width: 16),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(isEn ? 'Discount % (Auto Calculated)' : 'نسبة الخصم % (محسوبة تلقائياً)', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                                  const SizedBox(height: 6),
-                                                  Container(
-                                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.white,
-                                                      borderRadius: BorderRadius.circular(8),
-                                                      border: Border.all(color: Theme.of(context).primaryColor, style: BorderStyle.solid),
-                                                    ),
-                                                    alignment: Alignment.center,
-                                                    child: Text(
-                                                      '$discountPct%',
-                                                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Theme.of(context).primaryColor),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                ),
-                                const SizedBox(height: 20),
-
-                                // 5. Promotion Badge & Validity Dates
-                                if (isModalNarrow) ...[
-                                  Text(isEn ? 'Promotion Badge' : 'شارة العرض', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                  const SizedBox(height: 6),
-                                  DropdownButtonFormField<String>(
-                                    value: selectedBadgeType,
-                                    isExpanded: true,
-                                    decoration: InputDecoration(
-                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                    ),
-                                    items: _badgeTypeOptions.map((b) => DropdownMenuItem(value: b['id'], child: Text(isEn ? b['nameEn']! : b['nameAr']!, overflow: TextOverflow.ellipsis))).toList(),
-                                    onChanged: (val) => setDialogState(() => selectedBadgeType = val ?? 'NONE'),
-                                  ),
-                                  const SizedBox(height: 14),
-                                  Text(isEn ? 'Valid From *' : 'ساري من تاريخ *', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                  const SizedBox(height: 6),
-                                  TextField(
-                                    controller: fromCtrl,
-                                    readOnly: true,
-                                    onTap: () async {
-                                      final picked = await showDatePicker(
-                                        context: context,
-                                        initialDate: DateTime.tryParse(fromCtrl.text) ?? DateTime.now(),
-                                        firstDate: DateTime(2020),
-                                        lastDate: DateTime(2030),
-                                      );
-                                      if (picked != null) {
-                                        fromCtrl.text = '${picked.year.toString().padLeft(4, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
-                                      }
-                                    },
-                                    decoration: InputDecoration(
-                                      suffixIcon: const Icon(Icons.calendar_today, size: 18),
-                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 14),
-                                  Text(isEn ? 'Valid Until *' : 'ساري حتى تاريخ *', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                  const SizedBox(height: 6),
-                                  TextField(
-                                    controller: untilCtrl,
-                                    readOnly: true,
-                                    onTap: () async {
-                                      final picked = await showDatePicker(
-                                        context: context,
-                                        initialDate: DateTime.tryParse(untilCtrl.text) ?? DateTime.now().add(const Duration(days: 7)),
-                                        firstDate: DateTime(2020),
-                                        lastDate: DateTime(2030),
-                                      );
-                                      if (picked != null) {
-                                        untilCtrl.text = '${picked.year.toString().padLeft(4, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
-                                      }
-                                    },
-                                    decoration: InputDecoration(
-                                      suffixIcon: const Icon(Icons.calendar_today, size: 18),
-                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                    ),
-                                  ),
-                                ] else
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(isEn ? 'Promotion Badge' : 'شارة العرض', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                            const SizedBox(height: 6),
-                                            DropdownButtonFormField<String>(
-                                              value: selectedBadgeType,
-                                              isExpanded: true,
-                                              decoration: InputDecoration(
-                                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                                                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                              ),
-                                              items: _badgeTypeOptions.map((b) => DropdownMenuItem(value: b['id'], child: Text(isEn ? b['nameEn']! : b['nameAr']!, overflow: TextOverflow.ellipsis))).toList(),
-                                              onChanged: (val) => setDialogState(() => selectedBadgeType = val ?? 'NONE'),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(isEn ? 'Valid From *' : 'ساري من تاريخ *', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                            const SizedBox(height: 6),
-                                            TextField(
-                                              controller: fromCtrl,
-                                              readOnly: true,
-                                              onTap: () async {
-                                                final picked = await showDatePicker(
-                                                  context: context,
-                                                  initialDate: DateTime.tryParse(fromCtrl.text) ?? DateTime.now(),
-                                                  firstDate: DateTime(2020),
-                                                  lastDate: DateTime(2030),
-                                                );
-                                                if (picked != null) {
-                                                  fromCtrl.text = '${picked.year.toString().padLeft(4, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
-                                                }
-                                              },
-                                              decoration: InputDecoration(
-                                                suffixIcon: const Icon(Icons.calendar_today, size: 18),
-                                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                                                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(isEn ? 'Valid Until *' : 'ساري حتى تاريخ *', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                            const SizedBox(height: 6),
-                                            TextField(
-                                              controller: untilCtrl,
-                                              readOnly: true,
-                                              onTap: () async {
-                                                final picked = await showDatePicker(
-                                                  context: context,
-                                                  initialDate: DateTime.tryParse(untilCtrl.text) ?? DateTime.now().add(const Duration(days: 7)),
-                                                  firstDate: DateTime(2020),
-                                                  lastDate: DateTime(2030),
-                                                );
-                                                if (picked != null) {
-                                                  untilCtrl.text = '${picked.year.toString().padLeft(4, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
-                                                }
-                                              },
-                                              decoration: InputDecoration(
-                                                suffixIcon: const Icon(Icons.calendar_today, size: 18),
-                                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                                                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                const SizedBox(height: 20),
-
-                                // 6. Descriptions (Optional)
-                                if (isModalNarrow) ...[
-                                  Text(isEn ? 'Description (EN)' : 'الوصف (الإنجليزية)', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                  const SizedBox(height: 6),
-                                  TextField(
-                                    controller: descEnCtrl,
-                                    maxLines: 2,
-                                    decoration: InputDecoration(
-                                      hintText: isEn ? 'Describe offer details...' : 'اكتب تفاصيل العرض...',
-                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                                      contentPadding: const EdgeInsets.all(12),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 14),
-                                  Text(isEn ? 'Description (AR)' : 'الوصف (العربية)', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                  const SizedBox(height: 6),
-                                  TextField(
-                                    controller: descArCtrl,
-                                    maxLines: 2,
-                                    decoration: InputDecoration(
-                                      hintText: isEn ? 'اكتب تفاصيل العرض...' : 'اكتب تفاصيل العرض...',
-                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                                      contentPadding: const EdgeInsets.all(12),
-                                    ),
-                                  ),
-                                ] else
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(isEn ? 'Description (EN)' : 'الوصف (الإنجليزية)', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                            const SizedBox(height: 6),
-                                            TextField(
-                                              controller: descEnCtrl,
-                                              maxLines: 2,
-                                              decoration: InputDecoration(
-                                                hintText: isEn ? 'Describe offer details...' : 'اكتب تفاصيل العرض...',
-                                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                                                contentPadding: const EdgeInsets.all(12),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(isEn ? 'Description (AR)' : 'الوصف (العربية)', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                            const SizedBox(height: 6),
-                                            TextField(
-                                              controller: descArCtrl,
-                                              maxLines: 2,
-                                              decoration: InputDecoration(
-                                                hintText: isEn ? 'اكتب تفاصيل العرض...' : 'اكتب تفاصيل العرض...',
-                                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                                                contentPadding: const EdgeInsets.all(12),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                const SizedBox(height: 20),
-
-                                // 7. Image Upload Section
-                                Container(
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey.shade50,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: Colors.grey.shade200),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.image_outlined, size: 18, color: Colors.grey),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            isEn ? 'Offer Promotional Images' : 'الصور الترويجية للعرض',
+                        // 2. Store, Category, City Scope
+                        if (isModalNarrow) ...[
+                          if (isStoreManager) ...[
+                            Text(isEn ? 'Store & Branches' : 'المتجر والفروع التابعة', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                            const SizedBox(height: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: cardBgColor,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: cardBorderColor),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.storefront, color: Color(0xFF16A34A), size: 18),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            stores.where((s) => s.id == selectedStoreId).firstOrNull?.nameEn ?? (isEn ? 'Your Store' : 'متجرك'),
                                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                            overflow: TextOverflow.ellipsis,
                                           ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 12),
-
-                                      // Existing Image Preview
-                                      if (existingImageUrl != null && pickedImages.isEmpty) ...[
-                                        Row(
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(color: const Color(0xFF16A34A).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.verified_user, size: 12, color: Color(0xFF16A34A)),
+                                        const SizedBox(width: 3),
+                                        Text(isEn ? 'Your Store' : 'متجرك', style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF16A34A))),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                          ] else ...[
+                            AppCustomSelect<int>(
+                              label: isEn ? 'Retail Partner Store' : 'المتجر الشريك',
+                              isRequired: true,
+                              placeholder: isEn ? 'Select Store' : 'اختر المتجر',
+                              selectedValue: selectedStoreId,
+                              options: stores.map((s) => CustomSelectOption<int>(
+                                value: s.id,
+                                labelEn: s.nameEn,
+                                labelAr: s.nameAr,
+                                imageUrl: s.logoUrl,
+                              )).toList(),
+                              onChanged: (val) => setDialogState(() => selectedStoreId = val),
+                            ),
+                            const SizedBox(height: 14),
+                          ],
+                          AppCustomSelect<int>(
+                            label: isEn ? 'Category' : 'القسم الرئيسي',
+                            isRequired: true,
+                            placeholder: isEn ? 'Select Category' : 'اختر القسم',
+                            selectedValue: selectedCategoryId,
+                            options: categories.map((c) => CustomSelectOption<int>(
+                              value: c.id,
+                              labelEn: c.nameEn,
+                              labelAr: c.nameAr,
+                              imageUrl: c.imageUrl,
+                              icon: Icons.category_outlined,
+                            )).toList(),
+                            onChanged: (val) => setDialogState(() => selectedCategoryId = val),
+                          ),
+                          const SizedBox(height: 14),
+                          AppCustomSelect<int>(
+                            label: isEn ? 'City Scope' : 'المدينة',
+                            isRequired: true,
+                            placeholder: isEn ? 'Select City' : 'اختر المدينة',
+                            selectedValue: selectedCityId,
+                            options: cities.map((c) => CustomSelectOption<int>(
+                              value: c.id,
+                              labelEn: c.nameEn,
+                              labelAr: c.nameAr,
+                              icon: Icons.location_city_outlined,
+                            )).toList(),
+                            onChanged: (val) => setDialogState(() => selectedCityId = val),
+                          ),
+                        ] else
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (isStoreManager) ...[
+                                      Text(isEn ? 'Store & Branches' : 'المتجر والفروع التابعة', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                      const SizedBox(height: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                        decoration: BoxDecoration(
+                                          color: cardBgColor,
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(color: cardBorderColor),
+                                        ),
+                                        child: Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                           children: [
-                                            ClipRRect(
-                                              borderRadius: BorderRadius.circular(8),
-                                              child: Image.network(
-                                                AppConfig.normalizeImageUrl(existingImageUrl),
-                                                width: 80,
-                                                height: 80,
-                                                fit: BoxFit.cover,
-                                                errorBuilder: (_, __, ___) => Container(
-                                                  width: 80,
-                                                  height: 80,
-                                                  color: Colors.grey.shade200,
-                                                  child: const Icon(Icons.broken_image, color: Colors.grey),
-                                                ),
+                                            Expanded(
+                                              child: Row(
+                                                children: [
+                                                  const Icon(Icons.storefront, color: Color(0xFF16A34A), size: 18),
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
+                                                    child: Text(
+                                                      stores.where((s) => s.id == selectedStoreId).firstOrNull?.nameEn ?? (isEn ? 'Your Store' : 'متجرك'),
+                                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
                                             ),
-                                            const SizedBox(width: 12),
-                                            Text(isEn ? 'Current Active Image' : 'الصورة الحالية', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                                            const SizedBox(width: 8),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(color: const Color(0xFF16A34A).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  const Icon(Icons.verified_user, size: 12, color: Color(0xFF16A34A)),
+                                                  const SizedBox(width: 3),
+                                                  Text(isEn ? 'Your Store' : 'متجرك', style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF16A34A))),
+                                                ],
+                                              ),
+                                            ),
                                           ],
                                         ),
-                                        const SizedBox(height: 12),
-                                      ],
+                                      ),
+                                    ] else ...[
+                                      AppCustomSelect<int>(
+                                        label: isEn ? 'Retail Partner Store' : 'المتجر الشريك',
+                                        isRequired: true,
+                                        placeholder: isEn ? 'Select Store' : 'اختر المتجر',
+                                        selectedValue: selectedStoreId,
+                                        options: stores.map((s) => CustomSelectOption<int>(
+                                          value: s.id,
+                                          labelEn: s.nameEn,
+                                          labelAr: s.nameAr,
+                                          imageUrl: s.logoUrl,
+                                        )).toList(),
+                                        onChanged: (val) => setDialogState(() => selectedStoreId = val),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: AppCustomSelect<int>(
+                                  label: isEn ? 'Category' : 'القسم الرئيسي',
+                                  isRequired: true,
+                                  placeholder: isEn ? 'Select Category' : 'اختر القسم',
+                                  selectedValue: selectedCategoryId,
+                                  options: categories.map((c) => CustomSelectOption<int>(
+                                    value: c.id,
+                                    labelEn: c.nameEn,
+                                    labelAr: c.nameAr,
+                                    imageUrl: c.imageUrl,
+                                    icon: Icons.category_outlined,
+                                  )).toList(),
+                                  onChanged: (val) => setDialogState(() => selectedCategoryId = val),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: AppCustomSelect<int>(
+                                  label: isEn ? 'City Scope' : 'المدينة',
+                                  isRequired: true,
+                                  placeholder: isEn ? 'Select City' : 'اختر المدينة',
+                                  selectedValue: selectedCityId,
+                                  options: cities.map((c) => CustomSelectOption<int>(
+                                    value: c.id,
+                                    labelEn: c.nameEn,
+                                    labelAr: c.nameAr,
+                                    icon: Icons.location_city_outlined,
+                                  )).toList(),
+                                  onChanged: (val) => setDialogState(() => selectedCityId = val),
+                                ),
+                              ),
+                            ],
+                          ),
+                        const SizedBox(height: 20),
 
-                                      // Dropzone
-                                      InkWell(
-                                        onTap: () async {
-                                          final picker = ImagePicker();
-                                          final files = await picker.pickMultiImage();
-                                          if (files.isNotEmpty) {
-                                            for (final f in files) {
-                                              final bytes = await f.readAsBytes();
-                                              pickedImages.add(f);
-                                              pickedImageBytes.add(bytes);
-                                            }
-                                            setDialogState(() {});
-                                          }
-                                        },
-                                        child: Container(
-                                          width: double.infinity,
-                                          padding: const EdgeInsets.symmetric(vertical: 24),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            borderRadius: BorderRadius.circular(10),
-                                            border: Border.all(color: Colors.grey.shade300, style: BorderStyle.solid),
-                                          ),
-                                          child: Column(
-                                            children: [
-                                              const Icon(Icons.cloud_upload_outlined, size: 36, color: Colors.orange),
-                                              const SizedBox(height: 8),
-                                              Text(
-                                                isEn ? 'Click or Tap to upload images' : 'انقر لاختيار الصور وتحميلها',
-                                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                                              ),
-                                              const SizedBox(height: 4),
-                                              const Text('PNG, JPG, WEBP (Max 5MB)', style: TextStyle(color: Colors.grey, fontSize: 11)),
-                                            ],
-                                          ),
+                        // 3. Catalog Linked Product Section
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: cardBgColor,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: cardBorderColor),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.inventory_2_outlined, size: 18, color: Color(0xFF16A34A)),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      isEn ? 'Catalog Linked Product (Optional)' : 'ربط بمنتج من الدليل (اختياري)',
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                    ),
+                                  ),
+                                  if (isSearchingProducts)
+                                    Row(
+                                      children: [
+                                        const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF16A34A))),
+                                        const SizedBox(width: 6),
+                                        Text(isEn ? 'Searching...' : 'جاري البحث...', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                                      ],
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+
+                              // If Product Selected: Show Tile Card with All Details Matching Angular
+                              if (selectedProduct != null)
+                                Container(
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: const Color(0xFF16A34A).withValues(alpha: 0.4), width: 1.5),
+                                    boxShadow: [
+                                      BoxShadow(color: const Color(0xFF16A34A).withValues(alpha: 0.06), blurRadius: 10, offset: const Offset(0, 3)),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Container(
+                                        width: 68,
+                                        height: 68,
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(color: Colors.grey.shade300),
+                                        ),
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(8),
+                                          child: selectedProduct!.primaryImageUrl.isNotEmpty
+                                              ? AppNetworkImage(
+                                                  imageUrl: AppConfig.normalizeImageUrl(selectedProduct!.primaryImageUrl),
+                                                  fit: BoxFit.contain,
+                                                  defaultFallbackIcon: Icons.shopping_bag_outlined,
+                                                )
+                                              : const Icon(Icons.shopping_bag_outlined, color: Colors.grey, size: 28),
                                         ),
                                       ),
-
-                                      // Previews Grid
-                                      if (pickedImages.isNotEmpty) ...[
-                                        const SizedBox(height: 12),
-                                        Wrap(
-                                          spacing: 12,
-                                          runSpacing: 12,
-                                          children: List.generate(pickedImages.length, (idx) {
-                                            return Stack(
+                                      const SizedBox(width: 14),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
                                               children: [
-                                                ClipRRect(
-                                                  borderRadius: BorderRadius.circular(8),
-                                                  child: Image.memory(
-                                                    pickedImageBytes[idx],
-                                                    width: 80,
-                                                    height: 80,
-                                                    fit: BoxFit.cover,
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      Text(
+                                                        isEn ? selectedProduct!.nameEn : (selectedProduct!.nameAr.isNotEmpty ? selectedProduct!.nameAr : selectedProduct!.nameEn),
+                                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                                      ),
+                                                      if (isEn && selectedProduct!.nameAr.isNotEmpty)
+                                                        Text(selectedProduct!.nameAr, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                                                      if (!isEn && selectedProduct!.nameEn.isNotEmpty)
+                                                        Text(selectedProduct!.nameEn, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                                                    ],
                                                   ),
                                                 ),
-                                                Positioned(
-                                                  top: 2,
-                                                  right: 2,
-                                                  child: InkWell(
-                                                    onTap: () {
-                                                      setDialogState(() {
-                                                        pickedImages.removeAt(idx);
-                                                        pickedImageBytes.removeAt(idx);
-                                                      });
-                                                    },
-                                                    child: Container(
-                                                      padding: const EdgeInsets.all(2),
-                                                      decoration: const BoxDecoration(
-                                                        color: Colors.red,
-                                                        shape: BoxShape.circle,
-                                                      ),
-                                                      child: const Icon(Icons.close, size: 14, color: Colors.white),
+                                                InkWell(
+                                                  onTap: () => selectProduct(null),
+                                                  borderRadius: BorderRadius.circular(16),
+                                                  child: Container(
+                                                    padding: const EdgeInsets.all(4),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.red.withValues(alpha: 0.1),
+                                                      shape: BoxShape.circle,
                                                     ),
+                                                    child: const Icon(Icons.close, size: 16, color: Colors.red),
                                                   ),
                                                 ),
                                               ],
-                                            );
-                                          }),
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Wrap(
+                                              spacing: 6,
+                                              runSpacing: 4,
+                                              children: [
+                                                if (selectedProduct!.brand.isNotEmpty)
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                    decoration: BoxDecoration(
+                                                      color: const Color(0xFF16A34A).withValues(alpha: 0.12),
+                                                      borderRadius: BorderRadius.circular(4),
+                                                      border: Border.all(color: const Color(0xFF16A34A).withValues(alpha: 0.25)),
+                                                    ),
+                                                    child: Row(
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: [
+                                                        const Icon(Icons.verified, size: 12, color: Color(0xFF16A34A)),
+                                                        const SizedBox(width: 3),
+                                                        Text(
+                                                          isEn ? selectedProduct!.brand : (selectedProduct!.brandAr.isNotEmpty ? selectedProduct!.brandAr : selectedProduct!.brand),
+                                                          style: const TextStyle(fontSize: 11, color: Color(0xFF16A34A), fontWeight: FontWeight.bold),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                if (selectedProduct!.sku.isNotEmpty)
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                    decoration: BoxDecoration(color: isDark ? const Color(0xFF334155) : Colors.grey.shade200, borderRadius: BorderRadius.circular(4)),
+                                                    child: Text('SKU: ${selectedProduct!.sku}', style: const TextStyle(fontSize: 11, fontFamily: 'monospace')),
+                                                  ),
+                                                if (selectedProduct!.barcode.isNotEmpty)
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                    decoration: BoxDecoration(color: isDark ? const Color(0xFF334155) : Colors.grey.shade200, borderRadius: BorderRadius.circular(4)),
+                                                    child: Text('UPC: ${selectedProduct!.barcode}', style: const TextStyle(fontSize: 11, fontFamily: 'monospace')),
+                                                  ),
+                                                if (selectedProduct!.unit.isNotEmpty)
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                    decoration: BoxDecoration(color: isDark ? const Color(0xFF334155) : Colors.grey.shade100, borderRadius: BorderRadius.circular(4)),
+                                                    child: Text('${selectedProduct!.unitSize} ${selectedProduct!.unit}', style: const TextStyle(fontSize: 11)),
+                                                  ),
+                                              ],
+                                            ),
+                                            if ((isEn ? selectedProduct!.descriptionEn : selectedProduct!.descriptionAr)?.isNotEmpty == true) ...[
+                                              const SizedBox(height: 6),
+                                              Text(
+                                                (isEn ? selectedProduct!.descriptionEn : selectedProduct!.descriptionAr)!,
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                              ),
+                                            ],
+                                          ],
                                         ),
-                                      ],
+                                      ),
                                     ],
                                   ),
                                 ),
-                                const SizedBox(height: 20),
 
-                                // 8. Flags & Toggles
-                                Material(
-                                  color: Colors.grey.shade50,
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Container(
+                              // If No Product Selected: Show Search Autocomplete
+                              if (selectedProduct == null) ...[
+                                TextField(
+                                  controller: productSearchCtrl,
+                                  onChanged: onProductSearchInput,
+                                  onTap: () {
+                                    if (productOptions.isEmpty) {
+                                      onProductSearchInput('');
+                                    } else {
+                                      setDialogState(() => isProductDropdownOpen = true);
+                                    }
+                                  },
+                                  decoration: InputDecoration(
+                                    hintText: isEn ? 'Search product by name, brand, SKU or barcode...' : 'ابحث باسم المنتج، الماركة، الرمز (SKU) أو الباركود...',
+                                    prefixIcon: const Icon(Icons.search, size: 20),
+                                    suffixIcon: productSearchCtrl.text.isNotEmpty
+                                        ? IconButton(
+                                            icon: const Icon(Icons.clear, size: 18),
+                                            onPressed: () {
+                                              productSearchCtrl.clear();
+                                              onProductSearchInput('');
+                                            },
+                                          )
+                                        : null,
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                  ),
+                                ),
+                                if (isProductDropdownOpen)
+                                  Container(
+                                    constraints: const BoxConstraints(maxHeight: 260),
+                                    margin: const EdgeInsets.only(top: 8),
                                     decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: Colors.grey.shade200),
+                                      color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: cardBorderColor),
+                                      boxShadow: [
+                                        BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 14, offset: const Offset(0, 5)),
+                                      ],
                                     ),
                                     child: Column(
+                                      mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        CheckboxListTile(
-                                          dense: true,
-                                          title: Text(isEn ? 'Set as Featured Deal' : 'تمييز العرض في التوصيات'),
-                                          value: isFeatured,
-                                          onChanged: (val) => setDialogState(() => isFeatured = val ?? false),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                          decoration: BoxDecoration(
+                                            color: cardBgColor,
+                                            border: Border(bottom: BorderSide(color: cardBorderColor)),
+                                            borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+                                          ),
+                                          child: Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text(
+                                                isEn ? 'CATALOG PRODUCTS' : 'منتجات الدليل',
+                                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.grey, letterSpacing: 0.5),
+                                              ),
+                                              InkWell(
+                                                onTap: () => setDialogState(() => isProductDropdownOpen = false),
+                                                child: const Icon(Icons.close, size: 16, color: Colors.grey),
+                                              ),
+                                            ],
+                                          ),
                                         ),
-                                        CheckboxListTile(
-                                          dense: true,
-                                          title: Text(isEn ? 'Set as Flash Deal (Limited Time)' : 'عرض خاطف لفترة محدودة'),
-                                          value: isFlash,
-                                          onChanged: (val) => setDialogState(() => isFlash = val ?? false),
-                                        ),
-                                        CheckboxListTile(
-                                          dense: true,
-                                          title: Text(isEn ? 'Available In-Store' : 'متاح في فروع المتجر'),
-                                          value: isInStore,
-                                          onChanged: (val) => setDialogState(() => isInStore = val ?? true),
-                                        ),
-                                        CheckboxListTile(
-                                          dense: true,
-                                          title: Text(isEn ? 'Available Online' : 'متاح عبر الإنترنت'),
-                                          value: isOnline,
-                                          onChanged: (val) => setDialogState(() => isOnline = val ?? false),
-                                        ),
-                                        CheckboxListTile(
-                                          dense: true,
-                                          title: Text(isEn ? 'Active Status' : 'حالة النشاط (مفعل)', style: const TextStyle(fontWeight: FontWeight.bold)),
-                                          value: isActive,
-                                          onChanged: (val) => setDialogState(() => isActive = val ?? true),
-                                        ),
+                                        if (isSearchingProducts)
+                                          const Padding(
+                                            padding: EdgeInsets.all(20),
+                                            child: Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))),
+                                          )
+                                        else if (productOptions.isEmpty)
+                                          Padding(
+                                            padding: const EdgeInsets.all(20),
+                                            child: Center(
+                                              child: Text(
+                                                isEn ? 'No products found matching query' : 'لم يتم العثور على منتجات مطابقة',
+                                                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                              ),
+                                            ),
+                                          )
+                                        else
+                                          Flexible(
+                                            child: ListView.separated(
+                                              shrinkWrap: true,
+                                              itemCount: productOptions.length,
+                                              separatorBuilder: (_, __) => Divider(height: 1, color: cardBorderColor),
+                                              itemBuilder: (context, idx) {
+                                                final p = productOptions[idx];
+                                                final pName = isEn ? p.nameEn : (p.nameAr.isNotEmpty ? p.nameAr : p.nameEn);
+                                                return InkWell(
+                                                  onTap: () => selectProduct(p),
+                                                  child: Padding(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                                    child: Row(
+                                                      children: [
+                                                        Container(
+                                                          width: 36,
+                                                          height: 36,
+                                                          decoration: BoxDecoration(
+                                                            color: isDark ? const Color(0xFF0F172A) : Colors.grey.shade100,
+                                                            borderRadius: BorderRadius.circular(6),
+                                                          ),
+                                                          child: (p.images != null && p.images!.isNotEmpty)
+                                                              ? ClipRRect(
+                                                                  borderRadius: BorderRadius.circular(6),
+                                                                  child: AppNetworkImage(
+                                                                    imageUrl: p.images!.first.imageUrl.startsWith('http')
+                                                                        ? p.images!.first.imageUrl
+                                                                        : '${AppConfig.filePath}${p.images!.first.imageUrl}',
+                                                                    fit: BoxFit.cover,
+                                                                  ),
+                                                                )
+                                                              : const Icon(Icons.inventory_2_outlined, size: 18, color: Colors.grey),
+                                                        ),
+                                                        const SizedBox(width: 10),
+                                                        Expanded(
+                                                          child: Column(
+                                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                                            children: [
+                                                              Text(
+                                                                pName,
+                                                                style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+                                                                maxLines: 1,
+                                                                overflow: TextOverflow.ellipsis,
+                                                              ),
+                                                              if (p.brand?.isNotEmpty == true || p.category != null)
+                                                                Text(
+                                                                  [if (p.brand?.isNotEmpty == true) p.brand, if (p.category != null) (isEn ? p.category!.nameEn : p.category!.nameAr)].join(' • '),
+                                                                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                                                                ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ),
                                       ],
                                     ),
                                   ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // 4. Pricing Card with Auto Computed Discount
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: cardBgColor,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: cardBorderColor),
+                          ),
+                          child: isModalNarrow
+                              ? Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(isEn ? 'Original Price (SAR) *' : 'السعر الأصلي (ر.س) *', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                    const SizedBox(height: 6),
+                                    TextField(
+                                      controller: origPriceCtrl,
+                                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                      decoration: InputDecoration(
+                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 14),
+                                    Text(isEn ? 'Offer Price (SAR) *' : 'سعر العرض (ر.س) *', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                    const SizedBox(height: 6),
+                                    TextField(
+                                      controller: offerPriceCtrl,
+                                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                      decoration: InputDecoration(
+                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 14),
+                                    Text(isEn ? 'Discount % (Auto Calculated)' : 'نسبة الخصم % (محسوبة تلقائياً)', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                    const SizedBox(height: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                      decoration: BoxDecoration(
+                                        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(color: const Color(0xFF16A34A), width: 1.5),
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        '$discountPct%',
+                                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Color(0xFF16A34A)),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : Row(
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(isEn ? 'Original Price (SAR) *' : 'السعر الأصلي (ر.س) *', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                          const SizedBox(height: 6),
+                                          TextField(
+                                            controller: origPriceCtrl,
+                                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                            onChanged: (_) => setDialogState(() => calcDiscount()),
+                                            decoration: InputDecoration(
+                                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(isEn ? 'Offer Price (SAR) *' : 'سعر العرض (ر.س) *', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                          const SizedBox(height: 6),
+                                          TextField(
+                                            controller: offerPriceCtrl,
+                                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                            onChanged: (_) => setDialogState(() => calcDiscount()),
+                                            decoration: InputDecoration(
+                                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(isEn ? 'Discount % (Auto Calculated)' : 'نسبة الخصم % (محسوبة تلقائياً)', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                          const SizedBox(height: 6),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                            decoration: BoxDecoration(
+                                              color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                              borderRadius: BorderRadius.circular(8),
+                                              border: Border.all(color: const Color(0xFF16A34A), width: 1.5),
+                                            ),
+                                            alignment: Alignment.center,
+                                            child: Text(
+                                              '$discountPct%',
+                                              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Color(0xFF16A34A)),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // 5. Promotion Badge & Validity Dates
+                        if (isModalNarrow) ...[
+                          AppCustomSelect<String>(
+                            label: isEn ? 'Promotion Badge' : 'شارة العرض',
+                            placeholder: isEn ? 'Select Badge' : 'اختر الشارة',
+                            selectedValue: selectedBadgeType,
+                            options: _badgeTypeOptions.map((b) => CustomSelectOption<String>(
+                              value: b['id']!,
+                              labelEn: b['nameEn']!,
+                              labelAr: b['nameAr']!,
+                              icon: Icons.local_offer_outlined,
+                            )).toList(),
+                            onChanged: (val) => setDialogState(() => selectedBadgeType = val ?? 'NONE'),
+                          ),
+                          const SizedBox(height: 14),
+                          Text(isEn ? 'Valid From *' : 'ساري من تاريخ *', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: fromCtrl,
+                            readOnly: true,
+                            onTap: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: DateTime.tryParse(fromCtrl.text) ?? DateTime.now(),
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime(2030),
+                              );
+                              if (picked != null) {
+                                fromCtrl.text = '${picked.year.toString().padLeft(4, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+                              }
+                            },
+                            decoration: InputDecoration(
+                              suffixIcon: const Icon(Icons.calendar_today, size: 18),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          Text(isEn ? 'Valid Until *' : 'ساري حتى تاريخ *', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: untilCtrl,
+                            readOnly: true,
+                            onTap: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: DateTime.tryParse(untilCtrl.text) ?? DateTime.now().add(const Duration(days: 7)),
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime(2030),
+                              );
+                              if (picked != null) {
+                                untilCtrl.text = '${picked.year.toString().padLeft(4, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+                              }
+                            },
+                            decoration: InputDecoration(
+                              suffixIcon: const Icon(Icons.calendar_today, size: 18),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            ),
+                          ),
+                        ] else
+                          Row(
+                            children: [
+                              Expanded(
+                                child: AppCustomSelect<String>(
+                                  label: isEn ? 'Promotion Badge' : 'شارة العرض',
+                                  placeholder: isEn ? 'Select Badge' : 'اختر الشارة',
+                                  selectedValue: selectedBadgeType,
+                                  options: _badgeTypeOptions.map((b) => CustomSelectOption<String>(
+                                    value: b['id']!,
+                                    labelEn: b['nameEn']!,
+                                    labelAr: b['nameAr']!,
+                                    icon: Icons.local_offer_outlined,
+                                  )).toList(),
+                                  onChanged: (val) => setDialogState(() => selectedBadgeType = val ?? 'NONE'),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(isEn ? 'Valid From *' : 'ساري من تاريخ *', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                    const SizedBox(height: 6),
+                                    TextField(
+                                      controller: fromCtrl,
+                                      readOnly: true,
+                                      onTap: () async {
+                                        final picked = await showDatePicker(
+                                          context: context,
+                                          initialDate: DateTime.tryParse(fromCtrl.text) ?? DateTime.now(),
+                                          firstDate: DateTime(2020),
+                                          lastDate: DateTime(2030),
+                                        );
+                                        if (picked != null) {
+                                          fromCtrl.text = '${picked.year.toString().padLeft(4, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+                                        }
+                                      },
+                                      decoration: InputDecoration(
+                                        suffixIcon: const Icon(Icons.calendar_today, size: 18),
+                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(isEn ? 'Valid Until *' : 'ساري حتى تاريخ *', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                    const SizedBox(height: 6),
+                                    TextField(
+                                      controller: untilCtrl,
+                                      readOnly: true,
+                                      onTap: () async {
+                                        final picked = await showDatePicker(
+                                          context: context,
+                                          initialDate: DateTime.tryParse(untilCtrl.text) ?? DateTime.now().add(const Duration(days: 7)),
+                                          firstDate: DateTime(2020),
+                                          lastDate: DateTime(2030),
+                                        );
+                                        if (picked != null) {
+                                          untilCtrl.text = '${picked.year.toString().padLeft(4, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+                                        }
+                                      },
+                                      decoration: InputDecoration(
+                                        suffixIcon: const Icon(Icons.calendar_today, size: 18),
+                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        const SizedBox(height: 20),
+
+                        // 6. Descriptions (Optional)
+                        if (isModalNarrow) ...[
+                          Text(isEn ? 'Description (EN)' : 'الوصف (الإنجليزية)', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: descEnCtrl,
+                            maxLines: 2,
+                            decoration: InputDecoration(
+                              hintText: isEn ? 'Describe offer details...' : 'اكتب تفاصيل العرض...',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                              contentPadding: const EdgeInsets.all(12),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          Text(isEn ? 'Description (AR)' : 'الوصف (العربية)', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: descArCtrl,
+                            maxLines: 2,
+                            decoration: InputDecoration(
+                              hintText: isEn ? 'اكتب تفاصيل العرض...' : 'اكتب تفاصيل العرض...',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                              contentPadding: const EdgeInsets.all(12),
+                            ),
+                          ),
+                        ] else
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(isEn ? 'Description (EN)' : 'الوصف (الإنجليزية)', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                    const SizedBox(height: 6),
+                                    TextField(
+                                      controller: descEnCtrl,
+                                      maxLines: 2,
+                                      decoration: InputDecoration(
+                                        hintText: isEn ? 'Describe offer details...' : 'اكتب تفاصيل العرض...',
+                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                        contentPadding: const EdgeInsets.all(12),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(isEn ? 'Description (AR)' : 'الوصف (العربية)', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                    const SizedBox(height: 6),
+                                    TextField(
+                                      controller: descArCtrl,
+                                      maxLines: 2,
+                                      decoration: InputDecoration(
+                                        hintText: isEn ? 'اكتب تفاصيل العرض...' : 'اكتب تفاصيل العرض...',
+                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                        contentPadding: const EdgeInsets.all(12),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        const SizedBox(height: 20),
+
+                        // 7. Terms & Conditions (Optional)
+                        if (isModalNarrow) ...[
+                          Text(isEn ? 'Terms & Conditions (EN)' : 'الشروط والأحكام (الإنجليزية)', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: termsEnCtrl,
+                            maxLines: 2,
+                            decoration: InputDecoration(
+                              hintText: isEn ? 'Offer terms & conditions...' : 'الشروط والأحكام...',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                              contentPadding: const EdgeInsets.all(12),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          Text(isEn ? 'Terms & Conditions (AR)' : 'الشروط والأحكام (العربية)', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: termsArCtrl,
+                            maxLines: 2,
+                            decoration: InputDecoration(
+                              hintText: isEn ? 'الشروط والأحكام...' : 'الشروط والأحكام...',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                              contentPadding: const EdgeInsets.all(12),
+                            ),
+                          ),
+                        ] else
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(isEn ? 'Terms & Conditions (EN)' : 'الشروط والأحكام (الإنجليزية)', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                    const SizedBox(height: 6),
+                                    TextField(
+                                      controller: termsEnCtrl,
+                                      maxLines: 2,
+                                      decoration: InputDecoration(
+                                        hintText: isEn ? 'Offer terms & conditions...' : 'الشروط والأحكام...',
+                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                        contentPadding: const EdgeInsets.all(12),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(isEn ? 'Terms & Conditions (AR)' : 'الشروط والأحكام (العربية)', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                    const SizedBox(height: 6),
+                                    TextField(
+                                      controller: termsArCtrl,
+                                      maxLines: 2,
+                                      decoration: InputDecoration(
+                                        hintText: isEn ? 'الشروط والأحكام...' : 'الشروط والأحكام...',
+                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                        contentPadding: const EdgeInsets.all(12),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        const SizedBox(height: 20),
+
+                        // 8. Image Upload Section
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: cardBgColor,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: cardBorderColor),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.image_outlined, size: 18, color: Color(0xFF16A34A)),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      isEn ? 'Offer Promotional Images' : 'الصور الترويجية للعرض',
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+
+                              // Existing Image Preview
+                              if (existingImageUrl != null && pickedImages.isEmpty) ...[
+                                Row(
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: AppNetworkImage(
+                                        imageUrl: AppConfig.normalizeImageUrl(existingImageUrl),
+                                        width: 70,
+                                        height: 70,
+                                        fit: BoxFit.cover,
+                                        defaultFallbackIcon: Icons.broken_image,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(isEn ? 'Current Active Image' : 'الصورة الحالية', style: const TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                              ],
+
+                              // Dropzone
+                              InkWell(
+                                onTap: () async {
+                                  final picker = ImagePicker();
+                                  final files = await picker.pickMultiImage();
+                                  if (files.isNotEmpty) {
+                                    for (final f in files) {
+                                      final bytes = await f.readAsBytes();
+                                      pickedImages.add(f);
+                                      pickedImageBytes.add(bytes);
+                                    }
+                                    setDialogState(() {});
+                                  }
+                                },
+                                borderRadius: BorderRadius.circular(10),
+                                child: Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(vertical: 22),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: cardBorderColor, style: BorderStyle.solid),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      const Icon(Icons.cloud_upload_outlined, size: 36, color: Color(0xFF16A34A)),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        isEn ? 'Click or Drag images to upload' : 'انقر لاختيار الصور وتحميلها',
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      const Text('PNG, JPG, WEBP (Max 5MB)', style: TextStyle(color: Colors.grey, fontSize: 11)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+
+                              // Previews Grid
+                              if (pickedImages.isNotEmpty) ...[
+                                const SizedBox(height: 12),
+                                Wrap(
+                                  spacing: 10,
+                                  runSpacing: 10,
+                                  children: List.generate(pickedImages.length, (idx) {
+                                    return Stack(
+                                      children: [
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(8),
+                                          child: Image.memory(
+                                            pickedImageBytes[idx],
+                                            width: 70,
+                                            height: 70,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                        Positioned(
+                                          top: 3,
+                                          right: 3,
+                                          child: InkWell(
+                                            onTap: () {
+                                              setDialogState(() {
+                                                pickedImages.removeAt(idx);
+                                                pickedImageBytes.removeAt(idx);
+                                              });
+                                            },
+                                            child: Container(
+                                              padding: const EdgeInsets.all(2),
+                                              decoration: const BoxDecoration(
+                                                color: Colors.black87,
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: const Icon(Icons.close, size: 14, color: Colors.white),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  }),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // 9. Flags & Toggles Grid
+                        Material(
+                          color: cardBgColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(color: cardBorderColor),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            child: Column(
+                              children: [
+                                CheckboxListTile(
+                                  dense: true,
+                                  activeColor: const Color(0xFF16A34A),
+                                  title: Text(isEn ? 'Set as Featured Deal' : 'تمييز العرض في التوصيات'),
+                                  value: isFeatured,
+                                  onChanged: (val) => setDialogState(() => isFeatured = val ?? false),
+                                ),
+                                CheckboxListTile(
+                                  dense: true,
+                                  activeColor: const Color(0xFF16A34A),
+                                  title: Text(isEn ? 'Set as Flash Deal (Limited Time)' : 'عرض خاطف لفترة محدودة'),
+                                  value: isFlash,
+                                  onChanged: (val) => setDialogState(() => isFlash = val ?? false),
+                                ),
+                                CheckboxListTile(
+                                  dense: true,
+                                  activeColor: const Color(0xFF16A34A),
+                                  title: Text(isEn ? 'Available In-Store' : 'متاح في فروع المتجر'),
+                                  value: isInStore,
+                                  onChanged: (val) => setDialogState(() => isInStore = val ?? true),
+                                ),
+                                CheckboxListTile(
+                                  dense: true,
+                                  activeColor: const Color(0xFF16A34A),
+                                  title: Text(isEn ? 'Available Online' : 'متاح عبر الإنترنت'),
+                                  value: isOnline,
+                                  onChanged: (val) => setDialogState(() => isOnline = val ?? false),
+                                ),
+                                CheckboxListTile(
+                                  dense: true,
+                                  activeColor: const Color(0xFF16A34A),
+                                  title: Text(isEn ? 'Active Status' : 'حالة النشاط (مفعل)', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                  value: isActive,
+                                  onChanged: (val) => setDialogState(() => isActive = val ?? true),
                                 ),
                               ],
                             ),
                           ),
                         ),
-
-                        // Modal Footer
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                          decoration: BoxDecoration(
-                            border: Border(top: BorderSide(color: Colors.grey.shade200)),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              OutlinedButton(
-                                onPressed: () => Navigator.pop(dialogCtx),
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                ),
-                                child: Text(isEn ? 'Cancel' : 'إلغاء'),
-                              ),
-                              const SizedBox(width: 12),
-                              ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Theme.of(context).primaryColor,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                ),
-                                onPressed: isSaving
-                                    ? null
-                                    : () async {
-                                        final titleEn = titleEnCtrl.text.trim();
-                                        final titleAr = titleArCtrl.text.trim();
-                                        if (titleEn.isEmpty || titleAr.isEmpty) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(
-                                              content: Text(isEn ? 'Please provide titles in both languages.' : 'يرجى إدخال العنوان باللغتين.'),
-                                              backgroundColor: Colors.red,
-                                            ),
-                                          );
-                                          return;
-                                        }
-                                        if (selectedStoreId == null || selectedCategoryId == null || selectedCityId == null) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(
-                                              content: Text(isEn ? 'Please select Store, Category, and City.' : 'يرجى اختيار المتجر، القسم، والمدينة.'),
-                                              backgroundColor: Colors.red,
-                                            ),
-                                          );
-                                          return;
-                                        }
-
-                                        final orig = double.tryParse(origPriceCtrl.text.trim()) ?? 0;
-                                        final off = double.tryParse(offerPriceCtrl.text.trim()) ?? 0;
-                                        final disc = orig > 0 ? (((orig - off) / orig) * 100).roundToDouble() : 0.0;
-
-                                        setDialogState(() => isSaving = true);
-
-                                        final success = await ref.read(offerRepositoryProvider.notifier).saveOfferMultipart(
-                                          id: offer?.id,
-                                          titleEn: titleEn,
-                                          titleAr: titleAr,
-                                          origPrice: orig,
-                                          offerPrice: off,
-                                          discountPct: disc,
-                                          badgeType: selectedBadgeType,
-                                          validFrom: fromCtrl.text.trim(),
-                                          validUntil: untilCtrl.text.trim(),
-                                          storeId: selectedStoreId!,
-                                          productId: selectedProductId,
-                                          categoryId: selectedCategoryId!,
-                                          cityId: selectedCityId!,
-                                          descriptionEn: descEnCtrl.text.trim(),
-                                          descriptionAr: descArCtrl.text.trim(),
-                                          termsEn: termsEnCtrl.text.trim(),
-                                          termsAr: termsArCtrl.text.trim(),
-                                          isFeatured: isFeatured,
-                                          isFlash: isFlash,
-                                          isInStore: isInStore,
-                                          isOnline: isOnline,
-                                          isActive: isActive,
-                                          imageFiles: pickedImages.isNotEmpty ? pickedImages : null,
-                                        );
-
-                                        if (dialogCtx.mounted) Navigator.pop(dialogCtx);
-
-                                        if (mounted) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                success
-                                                    ? (offer == null ? (isEn ? 'Offer created successfully.' : 'تم إنشاء العرض بنجاح.') : (isEn ? 'Offer updated successfully.' : 'تم تحديث العرض بنجاح.'))
-                                                    : (isEn ? 'Failed to save offer.' : 'فشل حفظ العرض.'),
-                                              ),
-                                              backgroundColor: success ? Colors.green : Colors.red,
-                                            ),
-                                          );
-                                          _loadInitialOffers();
-                                        }
-                                      },
-                                icon: isSaving
-                                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                                    : const Icon(Icons.save, size: 18),
-                                label: Text(
-                                  offer == null
-                                      ? (isEn ? 'Create Offer' : 'إنشاء العرض')
-                                      : (isEn ? 'Save Changes' : 'حفظ التعديلات'),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                       ],
-                    );
-                  },
+                    ),
+                  ),
                 ),
+                actions: [
+                  OutlinedButton(
+                    onPressed: () => Navigator.pop(dialogCtx),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: Text(isEn ? 'Cancel' : 'إلغاء'),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF16A34A),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    onPressed: isSaving
+                        ? null
+                        : () async {
+                            final titleEn = titleEnCtrl.text.trim();
+                            final titleAr = titleArCtrl.text.trim();
+                            if (titleEn.isEmpty || titleAr.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(isEn ? 'Please provide titles in both languages.' : 'يرجى إدخال العنوان باللغتين.'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                              return;
+                            }
+
+                            if (selectedStoreId == null || selectedCategoryId == null || selectedCityId == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(isEn ? 'Store, category and city are required.' : 'المتجر والقسم والمدينة حقول مطلوبة.'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                              return;
+                            }
+
+                            final origPrice = double.tryParse(origPriceCtrl.text.trim()) ?? 0.0;
+                            final offPrice = double.tryParse(offerPriceCtrl.text.trim()) ?? 0.0;
+
+                            setDialogState(() => isSaving = true);
+
+                            final success = await ref.read(offerRepositoryProvider.notifier).saveOfferMultipart(
+                              id: offer?.id,
+                              titleEn: titleEn,
+                              titleAr: titleAr,
+                              origPrice: origPrice,
+                              offerPrice: offPrice,
+                              discountPct: discountPct.toDouble(),
+                              badgeType: selectedBadgeType,
+                              validFrom: fromCtrl.text,
+                              validUntil: untilCtrl.text,
+                              storeId: selectedStoreId!,
+                              productId: selectedProductId,
+                              categoryId: selectedCategoryId!,
+                              cityId: selectedCityId!,
+                              descriptionEn: descEnCtrl.text.trim(),
+                              descriptionAr: descArCtrl.text.trim(),
+                              termsEn: termsEnCtrl.text.trim(),
+                              termsAr: termsArCtrl.text.trim(),
+                              isFeatured: isFeatured,
+                              isFlash: isFlash,
+                              isInStore: isInStore,
+                              isOnline: isOnline,
+                              isActive: isActive,
+                              imageFiles: pickedImages.isNotEmpty ? pickedImages : null,
+                            );
+
+                            if (dialogCtx.mounted) Navigator.pop(dialogCtx);
+
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    success
+                                        ? (offer == null ? (isEn ? 'Offer created successfully.' : 'تم إنشاء العرض بنجاح.') : (isEn ? 'Offer updated successfully.' : 'تم تحديث العرض بنجاح.'))
+                                        : (isEn ? 'Failed to save offer.' : 'فشل حفظ العرض.'),
+                                  ),
+                                  backgroundColor: success ? const Color(0xFF16A34A) : Colors.red,
+                                ),
+                              );
+                              _loadInitialOffers();
+                            }
+                          },
+                    icon: isSaving
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Icon(Icons.save, size: 18),
+                    label: Text(
+                      offer == null
+                          ? (isEn ? 'Create Offer' : 'إنشاء العرض')
+                          : (isEn ? 'Save Changes' : 'حفظ التعديلات'),
+                    ),
+                  ),
+                ],
               ),
             );
           },
@@ -1508,6 +1803,12 @@ class _OffersCrudScreenState extends ConsumerState<OffersCrudScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final stores = ref.watch(storeRepositoryProvider).stores;
 
+    // Metrics calculation
+    final totalCount = _totalElements > 0 ? _totalElements : _offers.length;
+    final activeCount = _offers.where((o) => o.isActive == 1 && !o.isExpired).length;
+    final flashCount = _offers.where((o) => o.badgeType == 'FLASH' || o.isFlash == 1).length;
+    final expiredCount = _offers.where((o) => o.isExpired).length;
+
     return Directionality(
       textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
@@ -1522,342 +1823,578 @@ class _OffersCrudScreenState extends ConsumerState<OffersCrudScreen> {
               ref.read(categoryRepositoryProvider.notifier).fetchCategories(),
             ]);
           },
-          child: Stack(
-            children: [
-              SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                controller: _scrollController,
-                padding: const EdgeInsets.all(24.0),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1300),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Header with Title & Action Button
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  isEn ? 'Manage Deals & Promotions' : 'إدارة العروض والتخفيضات',
-                                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  isEn
-                                      ? 'Create, configure, and publish promotional offers and discounts'
-                                      : 'إنشاء وضبط ونشر عروض التخفيضات والصفقات الترويجية للمتاجر',
-                                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-                                ),
-                              ],
-                            ),
-                            ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Theme.of(context).primaryColor,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                elevation: 2,
-                              ),
-                              onPressed: () => _showOfferModal(),
-                              icon: const Icon(Icons.add, size: 20),
-                              label: Text(
-                                isEn ? 'Create Offer' : 'إنشاء عرض جديد',
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 20),
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 1. Header Block with Responsive Layout
+                _buildHeaderBlock(context, isEn, isRtl, isDark),
+                const SizedBox(height: 14),
 
-                        // Filters & Search Toolbar
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: Colors.grey.shade200),
-                            boxShadow: [
-                              BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, 2)),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Wrap(
-                                spacing: 12,
-                                runSpacing: 12,
-                                crossAxisAlignment: WrapCrossAlignment.center,
-                                children: [
-                                  // Search Input
-                                  SizedBox(
-                                    width: 280,
-                                    child: TextField(
-                                      controller: _searchController,
-                                      onChanged: _onSearchChanged,
-                                      decoration: InputDecoration(
-                                        hintText: isEn ? 'Search by title, store, or category...' : 'ابحث بالعنوان، المتجر، أو القسم...',
-                                        hintStyle: const TextStyle(fontSize: 13),
-                                        prefixIcon: const Icon(Icons.search, size: 20),
-                                        suffixIcon: _searchQuery.isNotEmpty
-                                            ? IconButton(
-                                                icon: const Icon(Icons.close, size: 18),
-                                                onPressed: () {
-                                                  _searchController.clear();
-                                                  _onSearchChanged('');
-                                                },
-                                              )
-                                            : null,
-                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
-                                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                                        filled: true,
-                                        fillColor: Colors.grey.shade50,
-                                      ),
-                                    ),
-                                  ),
-
-                                  // Store Filter
-                                  Container(
-                                    width: 180,
-                                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(color: Colors.grey.shade300),
-                                      color: Colors.white,
-                                    ),
-                                    child: DropdownButtonHideUnderline(
-                                      child: DropdownButton<int?>(
-                                        value: _selectedStoreFilter,
-                                        isExpanded: true,
-                                        hint: Text(isEn ? 'All Retail Stores' : 'جميع المتاجر', style: const TextStyle(fontSize: 13)),
-                                        items: [
-                                          DropdownMenuItem<int?>(
-                                            value: null,
-                                            child: Text(isEn ? 'All Retail Stores' : 'جميع المتاجر', style: const TextStyle(fontSize: 13)),
-                                          ),
-                                          ...stores.map((s) => DropdownMenuItem<int?>(
-                                                value: s.id,
-                                                child: Text(isEn ? s.nameEn : (s.nameAr.isNotEmpty ? s.nameAr : s.nameEn), style: const TextStyle(fontSize: 13)),
-                                              )),
-                                        ],
-                                        onChanged: (val) {
-                                          setState(() => _selectedStoreFilter = val);
-                                          _loadInitialOffers();
-                                        },
-                                      ),
-                                    ),
-                                  ),
-
-                                  // Badge Filter
-                                  Container(
-                                    width: 150,
-                                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(color: Colors.grey.shade300),
-                                      color: Colors.white,
-                                    ),
-                                    child: DropdownButtonHideUnderline(
-                                      child: DropdownButton<String>(
-                                        value: _selectedBadgeFilter,
-                                        isExpanded: true,
-                                        items: _badgeFilterOptions.map((b) => DropdownMenuItem<String>(
-                                              value: b['id'],
-                                              child: Text(isEn ? b['nameEn']! : b['nameAr']!, style: const TextStyle(fontSize: 13)),
-                                            )).toList(),
-                                        onChanged: (val) {
-                                          setState(() => _selectedBadgeFilter = val ?? '');
-                                          _loadInitialOffers();
-                                        },
-                                      ),
-                                    ),
-                                  ),
-
-                                  // Status Filter
-                                  Container(
-                                    width: 150,
-                                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(color: Colors.grey.shade300),
-                                      color: Colors.white,
-                                    ),
-                                    child: DropdownButtonHideUnderline(
-                                      child: DropdownButton<String>(
-                                        value: _selectedStatusFilter,
-                                        isExpanded: true,
-                                        items: _statusFilterOptions.map((s) => DropdownMenuItem<String>(
-                                              value: s['id'],
-                                              child: Text(isEn ? s['nameEn']! : s['nameAr']!, style: const TextStyle(fontSize: 13)),
-                                            )).toList(),
-                                        onChanged: (val) {
-                                          setState(() => _selectedStatusFilter = val ?? '');
-                                          _loadInitialOffers();
-                                        },
-                                      ),
-                                    ),
-                                  ),
-
-                                  // Reset Filters Button
-                                  if (_searchQuery.isNotEmpty || _selectedStoreFilter != null || _selectedBadgeFilter.isNotEmpty || _selectedStatusFilter.isNotEmpty)
-                                    TextButton.icon(
-                                      onPressed: _clearAllFilters,
-                                      icon: const Icon(Icons.filter_alt_off, size: 18, color: Colors.red),
-                                      label: Text(isEn ? 'Reset' : 'إعادة ضبط', style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-                                    ),
-
-                                  // Stats Chip
-                                  if (_totalElements > 0)
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey.shade100,
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child: Text(
-                                        isEn
-                                            ? 'Showing ${_offers.length} of $_totalElements offers'
-                                            : 'عرض ${_offers.length} من $_totalElements عرض',
-                                        style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.w600),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-
-                        // Offers List
-                        if (_isLoading)
-                          const Center(
-                            child: Padding(
-                              padding: EdgeInsets.all(48.0),
-                              child: CircularProgressIndicator(),
-                            ),
-                          )
-                        else if (_offers.isEmpty)
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(48),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: Colors.grey.shade200),
-                            ),
-                            child: Column(
-                              children: [
-                                Icon(Icons.local_offer_outlined, size: 64, color: Colors.grey.shade300),
-                                const SizedBox(height: 16),
-                                Text(
-                                  isEn ? 'No offers registered' : 'لا توجد عروض مسجلة',
-                                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  isEn
-                                      ? 'Click "Create Offer" to publish your first retail promotion.'
-                                      : 'انقر على "إنشاء عرض جديد" لنشر أول عرض ترويجي في النظام.',
-                                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-                                ),
-                              ],
-                            ),
-                          )
-                        else
-                          ListView.separated(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: _offers.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 12),
-                            itemBuilder: (context, index) {
-                              final o = _offers[index];
-                              return _buildOfferCard(o, isEn);
-                            },
-                          ),
-
-                        // Load More Spinner
-                        if (_isLoadingMore)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 20),
-                            child: Center(
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                                  const SizedBox(width: 10),
-                                  Text(isEn ? 'Loading more offers...' : 'جاري تحميل المزيد من العروض...', style: const TextStyle(fontSize: 13, color: Colors.grey)),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                        // End of Catalog Indicator
-                        if (!_isLoading && !_hasMore && _offers.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 24),
-                            child: Center(
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey.shade100,
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.check_circle, size: 16, color: Colors.green),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      isEn ? 'All $_totalElements offers loaded' : 'تم عرض كافة العروض ($_totalElements)',
-                                      style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.bold),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
+                // 2. Stats & Metrics Cards
+                _buildStatsGrid(
+                  totalCount: totalCount,
+                  activeCount: activeCount,
+                  flashCount: flashCount,
+                  expiredCount: expiredCount,
+                  isEn: isEn,
+                  isDark: isDark,
                 ),
-              ),
+                const SizedBox(height: 12),
 
-              // Floating Scroll To Top Button
-              if (_showScrollTop)
-                Positioned(
-                  bottom: 24,
-                  right: 24,
-                  child: FloatingActionButton.small(
-                    onPressed: _scrollToTop,
-                    backgroundColor: Theme.of(context).primaryColor,
-                    foregroundColor: Colors.white,
-                    child: const Icon(Icons.keyboard_arrow_up),
-                  ),
+                // 3. Search & Filter Toolbar
+                _buildFilterToolbar(
+                  stores: stores,
+                  isEn: isEn,
+                  isDark: isDark,
                 ),
-            ],
+                const SizedBox(height: 14),
+
+                // 4. Content Area: Loading / Empty / Offers List
+                if (_isLoading && _offers.isEmpty) ...[
+                  CrudLoadingWidget(
+                    titleEn: 'Loading Offers & Promotions',
+                    titleAr: 'جاري تحميل العروض والصفقات الترويجية',
+                    subtitleEn: 'Fetching latest real-time deals and retail promotions...',
+                    subtitleAr: 'جاري جلب أحدث الصفقات والعروض الترويجية من الخوادم...',
+                    icon: Icons.local_offer_outlined,
+                    isRtl: isRtl,
+                    isDark: isDark,
+                  ),
+                ] else if (_offers.isEmpty) ...[
+                  _buildEmptyState(isEn, isDark),
+                ] else ...[
+                  _buildOffersList(isEn, isDark),
+                ],
+                const SizedBox(height: 32),
+              ],
+            ),
           ),
         ),
+        floatingActionButton: _showScrollTop
+            ? FloatingActionButton.small(
+                backgroundColor: const Color(0xFF16A34A),
+                foregroundColor: Colors.white,
+                onPressed: _scrollToTop,
+                child: const Icon(Icons.arrow_upward, size: 18),
+              )
+            : null,
       ),
     );
   }
 
-  Widget _buildOfferCard(Offer o, bool isEn) {
+  // 1. Responsive Header Block
+  Widget _buildHeaderBlock(BuildContext context, bool isEn, bool isRtl, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isMobile = constraints.maxWidth < 600;
+
+          final titleInfo = Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDCFCE7),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF16A34A).withValues(alpha: 0.2)),
+                ),
+                child: const Icon(Icons.local_offer, color: Color(0xFF16A34A), size: 24),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isEn ? 'Manage Deals & Promotions' : 'إدارة العروض والتخفيضات',
+                      style: TextStyle(
+                        fontSize: isMobile ? 16 : 19,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      isEn
+                          ? 'Create, configure, and publish promotional offers and discounts'
+                          : 'إنشاء وضبط ونشر عروض التخفيضات والصفقات الترويجية للمتاجر',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+
+          final createBtn = ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF16A34A),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              elevation: 0,
+            ),
+            onPressed: () => _showOfferModal(),
+            icon: const Icon(Icons.add_circle_outline, size: 18),
+            label: Text(
+              isEn ? 'Create Offer' : 'إنشاء عرض جديد',
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+            ),
+          );
+
+          if (isMobile) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                titleInfo,
+                const SizedBox(height: 12),
+                createBtn,
+              ],
+            );
+          }
+
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(child: titleInfo),
+              const SizedBox(width: 14),
+              createBtn,
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  // 2. Metrics / Stats Grid
+  Widget _buildStatsGrid({
+    required int totalCount,
+    required int activeCount,
+    required int flashCount,
+    required int expiredCount,
+    required bool isEn,
+    required bool isDark,
+  }) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final screenWidth = constraints.maxWidth;
+        final isCompact = screenWidth < 550;
+
+        final statItems = [
+          _buildStatCard(
+            title: isEn ? 'Total Deals' : 'إجمالي العروض',
+            value: totalCount.toString(),
+            icon: Icons.local_offer_outlined,
+            color: const Color(0xFF16A34A),
+            isDark: isDark,
+          ),
+          _buildStatCard(
+            title: isEn ? 'Active Deals' : 'العروض النشطة',
+            value: activeCount.toString(),
+            icon: Icons.check_circle_outline,
+            color: const Color(0xFF0284C7),
+            isDark: isDark,
+          ),
+          _buildStatCard(
+            title: isEn ? 'Flash & Special' : 'العروض الخاطفة',
+            value: flashCount.toString(),
+            icon: Icons.bolt_outlined,
+            color: const Color(0xFFD97706),
+            isDark: isDark,
+          ),
+          _buildStatCard(
+            title: isEn ? 'Expired Deals' : 'العروض المنتهية',
+            value: expiredCount.toString(),
+            icon: Icons.history_toggle_off,
+            color: const Color(0xFFDC2626),
+            isDark: isDark,
+          ),
+        ];
+
+        if (isCompact) {
+          return LayoutBuilder(
+            builder: (context, box) {
+              final itemWidth = (box.maxWidth - 8) / 2;
+              return Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: statItems.map((item) => SizedBox(width: itemWidth, child: item)).toList(),
+              );
+            },
+          );
+        }
+
+        return Row(
+          children: statItems.map((item) => Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: item))).toList(),
+        );
+      },
+    );
+  }
+
+  Widget _buildStatCard({
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color color,
+    required bool isDark,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: color, size: 17),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  ),
+                ),
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w500,
+                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 3. Search & Filter Toolbar
+  Widget _buildFilterToolbar({
+    required List<Store> stores,
+    required bool isEn,
+    required bool isDark,
+  }) {
+    final authState = ref.watch(authProvider);
+    final isStoreManager = authState.currentAdmin?.role == 'STORE_MANAGER' && authState.currentAdmin?.storeId != null;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+        ),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isMobile = constraints.maxWidth < 600;
+          final searchWidth = isMobile ? double.infinity : 260.0;
+          final isNarrowPhone = constraints.maxWidth < 360;
+          final dropdownWidth = isNarrowPhone ? double.infinity : (isMobile ? (constraints.maxWidth - 10) / 2 : 160.0);
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  // Search Field
+                  SizedBox(
+                    width: searchWidth,
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: _onSearchChanged,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      ),
+                      decoration: InputDecoration(
+                        hintText: isEn ? 'Search by title, store, or category...' : 'ابحث بالعنوان، المتجر، أو القسم...',
+                        hintStyle: TextStyle(fontSize: 12, color: isDark ? const Color(0xFF64748B) : Colors.grey.shade500),
+                        prefixIcon: Icon(Icons.search, size: 18, color: isDark ? const Color(0xFF94A3B8) : Colors.grey.shade600),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.close, size: 16),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  _onSearchChanged('');
+                                },
+                              )
+                            : null,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: Color(0xFF16A34A), width: 1.5),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        filled: true,
+                        fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                      ),
+                    ),
+                  ),
+
+                  // Store Filter Dropdown (Hidden for Store Manager)
+                  if (!isStoreManager)
+                    Container(
+                      width: dropdownWidth,
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                        color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<int?>(
+                          value: _selectedStoreFilter,
+                          isExpanded: true,
+                          dropdownColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          ),
+                          hint: Text(
+                            isEn ? 'All Retail Stores' : 'جميع المتاجر',
+                            style: TextStyle(fontSize: 12.5, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                          ),
+                          items: [
+                            DropdownMenuItem<int?>(
+                              value: null,
+                              child: Text(isEn ? 'All Retail Stores' : 'جميع المتاجر', overflow: TextOverflow.ellipsis),
+                            ),
+                            ...stores.map((s) => DropdownMenuItem<int?>(
+                                  value: s.id,
+                                  child: Text(isEn ? s.nameEn : (s.nameAr.isNotEmpty ? s.nameAr : s.nameEn), overflow: TextOverflow.ellipsis),
+                                )),
+                          ],
+                          onChanged: (val) {
+                            setState(() => _selectedStoreFilter = val);
+                            _loadInitialOffers();
+                          },
+                        ),
+                      ),
+                    ),
+
+                  // Badge Filter Dropdown
+                  Container(
+                    width: dropdownWidth,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                      color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _selectedBadgeFilter,
+                        isExpanded: true,
+                        dropdownColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                        ),
+                        items: _badgeFilterOptions.map((b) => DropdownMenuItem<String>(
+                              value: b['id'],
+                              child: Text(isEn ? b['nameEn']! : b['nameAr']!, overflow: TextOverflow.ellipsis),
+                            )).toList(),
+                        onChanged: (val) {
+                          setState(() => _selectedBadgeFilter = val ?? '');
+                          _loadInitialOffers();
+                        },
+                      ),
+                    ),
+                  ),
+
+                  // Status Filter Dropdown
+                  Container(
+                    width: dropdownWidth,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                      color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _selectedStatusFilter,
+                        isExpanded: true,
+                        dropdownColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                        ),
+                        items: _statusFilterOptions.map((s) => DropdownMenuItem<String>(
+                              value: s['id'],
+                              child: Text(isEn ? s['nameEn']! : s['nameAr']!, overflow: TextOverflow.ellipsis),
+                            )).toList(),
+                        onChanged: (val) {
+                          setState(() => _selectedStatusFilter = val ?? '');
+                          _loadInitialOffers();
+                        },
+                      ),
+                    ),
+                  ),
+
+                  // Reset Filters Button
+                  if (_searchQuery.isNotEmpty || _selectedStoreFilter != null || _selectedBadgeFilter.isNotEmpty || _selectedStatusFilter.isNotEmpty)
+                    TextButton.icon(
+                      onPressed: _clearAllFilters,
+                      icon: const Icon(Icons.filter_alt_off, size: 16, color: Colors.red),
+                      label: Text(isEn ? 'Reset' : 'إعادة ضبط', style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12)),
+                    ),
+
+                  // Stats Count Chip
+                  if (_totalElements > 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF16A34A).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        isEn
+                            ? 'Showing ${_offers.length} of $_totalElements offers'
+                            : 'عرض ${_offers.length} من $_totalElements عرض',
+                        style: const TextStyle(fontSize: 11.5, color: Color(0xFF16A34A), fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  // 4. Offers List
+  Widget _buildOffersList(bool isEn, bool isDark) {
+    return Column(
+      children: [
+        ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: _offers.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 10),
+          itemBuilder: (context, index) {
+            final o = _offers[index];
+            return _buildOfferCard(o, isEn, isDark);
+          },
+        ),
+
+        // Load More Spinner
+        if (_isLoadingMore)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 18),
+            child: Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF16A34A))),
+                  const SizedBox(width: 10),
+                  Text(isEn ? 'Loading more offers...' : 'جاري تحميل المزيد من العروض...', style: const TextStyle(fontSize: 12.5, color: Colors.grey)),
+                ],
+              ),
+            ),
+          ),
+
+        // End of Catalog Indicator
+        if (!_isLoading && !_hasMore && _offers.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E293B) : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.check_circle, size: 14, color: Color(0xFF16A34A)),
+                    const SizedBox(width: 6),
+                    Text(
+                      isEn ? 'All $_totalElements offers loaded' : 'تم عرض كافة العروض ($_totalElements)',
+                      style: TextStyle(fontSize: 11.5, color: isDark ? const Color(0xFF94A3B8) : Colors.grey.shade700, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  // Offer Card Item
+  Widget _buildOfferCard(Offer o, bool isEn, bool isDark) {
     final title = isEn ? o.titleEn : (o.titleAr.isNotEmpty ? o.titleAr : o.titleEn);
     final storeName = o.store != null
         ? (isEn ? o.store!.nameEn : (o.store!.nameAr.isNotEmpty ? o.store!.nameAr : o.store!.nameEn))
         : (isEn ? 'Store #${o.storeId}' : 'متجر #${o.storeId}');
     final categoryName = o.category != null ? (isEn ? o.category!.nameEn : (o.category!.nameAr.isNotEmpty ? o.category!.nameAr : o.category!.nameEn)) : '';
     final cityName = o.city != null ? (isEn ? o.city!.nameEn : (o.city!.nameAr.isNotEmpty ? o.city!.nameAr : o.city!.nameEn)) : '';
-
     final imageUrl = o.primaryImageUrl;
 
     // Status styling
-    Color statusBg = Colors.grey.shade100;
-    Color statusColor = Colors.grey.shade700;
+    Color statusBg = isDark ? const Color(0xFF334155) : Colors.grey.shade100;
+    Color statusColor = isDark ? const Color(0xFF94A3B8) : Colors.grey.shade700;
     String statusText = isEn ? 'Disabled' : 'معطل';
 
     if (o.isExpired) {
@@ -1869,72 +2406,79 @@ class _OffersCrudScreenState extends ConsumerState<OffersCrudScreen> {
       statusColor = const Color(0xFF2563EB);
       statusText = isEn ? 'Upcoming' : 'قادم';
     } else if (o.isActive == 1) {
-      statusBg = const Color(0xFFECFDF5);
-      statusColor = const Color(0xFF10B981);
+      statusBg = const Color(0xFFDCFCE7);
+      statusColor = const Color(0xFF16A34A);
       statusText = isEn ? 'Active' : 'نشط';
     }
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(
+          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+        ),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 6, offset: const Offset(0, 2)),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final isNarrow = constraints.maxWidth < 700;
+          final isNarrow = constraints.maxWidth < 650;
 
-          final leftAndCenter = Row(
+          final thumbnailAndInfo = Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Left: Thumbnail Box with Badge Chip
+              // Left: Image Thumbnail with Badge Overlay
               InkWell(
+                borderRadius: BorderRadius.circular(10),
                 onTap: () => context.push('/offers/${o.id}'),
                 child: Stack(
                   children: [
                     Container(
-                      width: 76,
-                      height: 76,
+                      width: 72,
+                      height: 72,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.grey.shade300),
-                        color: Colors.grey.shade50,
+                        border: Border.all(color: isDark ? const Color(0xFF334155) : Colors.grey.shade300),
+                        color: isDark ? const Color(0xFF0F172A) : Colors.grey.shade50,
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(10),
                         child: imageUrl.isNotEmpty
-                            ? Image.network(
-                                AppConfig.normalizeImageUrl(imageUrl),
+                            ? AppNetworkImage(
+                                imageUrl: AppConfig.normalizeImageUrl(imageUrl),
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => const Icon(Icons.local_offer, color: Colors.grey, size: 30),
+                                defaultFallbackIcon: Icons.local_offer,
                               )
-                            : const Icon(Icons.local_offer, color: Colors.grey, size: 30),
+                            : const Icon(Icons.local_offer, color: Colors.grey, size: 28),
                       ),
                     ),
                     if (o.badgeType.isNotEmpty && o.badgeType != 'NONE')
                       Positioned(
-                        bottom: 4,
-                        left: 4,
+                        bottom: 3,
+                        left: 3,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).primaryColor,
+                            color: const Color(0xFF16A34A),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
                             o.badgeType,
-                            style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900),
+                            style: const TextStyle(color: Colors.white, fontSize: 8.5, fontWeight: FontWeight.w900),
                           ),
                         ),
                       ),
                   ],
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
 
               // Center: Details
               Expanded(
@@ -1945,33 +2489,42 @@ class _OffersCrudScreenState extends ConsumerState<OffersCrudScreen> {
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14.5,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 5),
+
+                      // Store & Category Pills
                       Wrap(
-                        spacing: 8,
+                        spacing: 6,
                         runSpacing: 4,
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                             decoration: BoxDecoration(
-                              color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                              color: const Color(0xFF16A34A).withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.storefront, size: 14, color: Theme.of(context).primaryColor),
-                                const SizedBox(width: 4),
-                                Text(storeName, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Theme.of(context).primaryColor)),
+                                const Icon(Icons.storefront, size: 12, color: Color(0xFF16A34A)),
+                                const SizedBox(width: 3),
+                                Text(
+                                  storeName,
+                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF16A34A)),
+                                ),
                               ],
                             ),
                           ),
                           if (categoryName.isNotEmpty)
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                               decoration: BoxDecoration(
                                 color: const Color(0xFF2563EB).withValues(alpha: 0.08),
                                 borderRadius: BorderRadius.circular(4),
@@ -1979,15 +2532,18 @@ class _OffersCrudScreenState extends ConsumerState<OffersCrudScreen> {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.category, size: 14, color: Color(0xFF2563EB)),
-                                  const SizedBox(width: 4),
-                                  Text(categoryName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF2563EB))),
+                                  const Icon(Icons.category, size: 12, color: Color(0xFF2563EB)),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    categoryName,
+                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Color(0xFF2563EB)),
+                                  ),
                                 ],
                               ),
                             ),
                           if (cityName.isNotEmpty)
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                               decoration: BoxDecoration(
                                 color: const Color(0xFF059669).withValues(alpha: 0.08),
                                 borderRadius: BorderRadius.circular(4),
@@ -1995,62 +2551,71 @@ class _OffersCrudScreenState extends ConsumerState<OffersCrudScreen> {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.place, size: 14, color: Color(0xFF059669)),
-                                  const SizedBox(width: 4),
-                                  Text(cityName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF059669))),
+                                  const Icon(Icons.place, size: 12, color: Color(0xFF059669)),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    cityName,
+                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Color(0xFF059669)),
+                                  ),
                                 ],
                               ),
                             ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
 
                       // Pricing & Validity Row
                       Wrap(
-                        spacing: 12,
+                        spacing: 10,
                         runSpacing: 4,
                         crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           Text(
                             '${o.offerPrice} SAR',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Theme.of(context).primaryColor),
+                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF16A34A)),
                           ),
                           if (o.originalPrice > 0)
                             Text(
                               '${o.originalPrice} SAR',
-                              style: TextStyle(fontSize: 12, color: Colors.grey.shade500, decoration: TextDecoration.lineThrough),
+                              style: TextStyle(fontSize: 11.5, color: isDark ? const Color(0xFF64748B) : Colors.grey.shade500, decoration: TextDecoration.lineThrough),
                             ),
                           if (o.discountPct > 0)
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFEF4444).withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
                                 '-${o.discountPct.toInt()}% OFF',
-                                style: const TextStyle(color: Color(0xFFEF4444), fontSize: 11, fontWeight: FontWeight.w800),
+                                style: const TextStyle(color: Color(0xFFEF4444), fontSize: 10.5, fontWeight: FontWeight.w800),
                               ),
                             ),
                           if (o.validFrom.isNotEmpty || o.validUntil.isNotEmpty)
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.event, size: 14, color: Colors.grey),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '${o.validFrom.split('T')[0]} → ',
-                                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                                ),
-                                Text(
-                                  o.validUntil.split('T')[0],
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: o.isExpired ? const Color(0xFFDC2626) : Colors.grey.shade800,
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.event, size: 12, color: isDark ? const Color(0xFF94A3B8) : Colors.grey),
+                                  const SizedBox(width: 3),
+                                  Flexible(
+                                    child: Text(
+                                      '${o.validFrom.split('T')[0]} → ${o.validUntil.split('T')[0]}',
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.bold,
+                                        color: o.isExpired ? const Color(0xFFDC2626) : (isDark ? const Color(0xFFCBD5E1) : Colors.grey.shade800),
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                         ],
                       ),
@@ -2061,97 +2626,86 @@ class _OffersCrudScreenState extends ConsumerState<OffersCrudScreen> {
             ],
           );
 
-          final rightGroup = Column(
-            crossAxisAlignment: isNarrow ? CrossAxisAlignment.start : CrossAxisAlignment.end,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          final actionButtons = Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              // Status Pill
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: statusBg,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 7,
-                      height: 7,
-                      decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(statusText, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: statusColor)),
-                  ],
-                ),
+              // 1. View Details (Eye icon)
+              _buildActionButton(
+                icon: Icons.visibility_outlined,
+                tooltip: isEn ? 'View Details' : 'عرض التفاصيل',
+                isDark: isDark,
+                hoverColor: const Color(0xFF2563EB),
+                onPressed: () => context.push('/offers/${o.id}'),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(width: 6),
 
-              // Action Buttons
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton.filledTonal(
-                    style: IconButton.styleFrom(
-                      backgroundColor: Colors.blue.shade50,
-                      foregroundColor: Colors.blue.shade700,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                    icon: const Icon(Icons.visibility_outlined, size: 18),
-                    tooltip: isEn ? 'View Details' : 'عرض التفاصيل',
-                    onPressed: () => context.push('/offers/${o.id}'),
-                  ),
-                  const SizedBox(width: 6),
-                  IconButton.filledTonal(
-                    style: IconButton.styleFrom(
-                      backgroundColor: const Color(0xFFFEF3C7),
-                      foregroundColor: const Color(0xFFD97706),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                    icon: const Icon(Icons.more_time, size: 18),
-                    tooltip: isEn ? 'Extend Offer (+7 Days)' : 'تمديد العرض (+7 أيام)',
-                    onPressed: () => _extendOffer(o),
-                  ),
-                  const SizedBox(width: 6),
-                  IconButton.filledTonal(
-                    style: IconButton.styleFrom(
-                      backgroundColor: Colors.grey.shade100,
-                      foregroundColor: Colors.grey.shade700,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                    icon: const Icon(Icons.edit_outlined, size: 18),
-                    tooltip: isEn ? 'Edit' : 'تعديل',
-                    onPressed: () => _showOfferModal(o),
-                  ),
-                  const SizedBox(width: 6),
-                  IconButton.filledTonal(
-                    style: IconButton.styleFrom(
-                      backgroundColor: Colors.red.shade50,
-                      foregroundColor: Colors.red.shade700,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                    icon: const Icon(Icons.delete_outline, size: 18),
-                    tooltip: isEn ? 'Delete' : 'حذف',
-                    onPressed: () => _deleteOffer(o),
-                  ),
-                ],
+              // 2. Extend Offer (+7 Days clock icon)
+              _buildActionButton(
+                icon: Icons.more_time,
+                tooltip: isEn ? 'Extend Offer (+7 Days)' : 'تمديد العرض (+7 أيام)',
+                isDark: isDark,
+                hoverColor: const Color(0xFFD97706),
+                onPressed: () => _extendOffer(o),
+              ),
+              const SizedBox(width: 6),
+
+              // 3. Edit (Pencil icon)
+              _buildActionButton(
+                icon: Icons.edit_outlined,
+                tooltip: isEn ? 'Edit' : 'تعديل',
+                isDark: isDark,
+                hoverColor: const Color(0xFF16A34A),
+                onPressed: () => _showOfferModal(o),
+              ),
+              const SizedBox(width: 6),
+
+              // 4. Delete (Trash icon)
+              _buildActionButton(
+                icon: Icons.delete_outline,
+                tooltip: isEn ? 'Delete' : 'حذف',
+                isDark: isDark,
+                hoverColor: const Color(0xFFDC2626),
+                onPressed: () => _deleteOffer(o),
               ),
             ],
+          );
+
+          final statusPill = Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: statusBg,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle),
+                ),
+                const SizedBox(width: 5),
+                Text(statusText, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: statusColor)),
+              ],
+            ),
           );
 
           if (isNarrow) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                leftAndCenter,
-                const SizedBox(height: 12),
-                const Divider(height: 1),
+                thumbnailAndInfo,
                 const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Divider(height: 1, color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                const SizedBox(height: 8),
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
-                    rightGroup.children[0], // status pill
-                    rightGroup.children[2], // action buttons
+                    statusPill,
+                    actionButtons,
                   ],
                 ),
               ],
@@ -2161,12 +2715,109 @@ class _OffersCrudScreenState extends ConsumerState<OffersCrudScreen> {
           return Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Expanded(child: leftAndCenter),
-              const SizedBox(width: 16),
-              rightGroup,
+              Expanded(child: thumbnailAndInfo),
+              const SizedBox(width: 14),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  statusPill,
+                  const SizedBox(height: 10),
+                  actionButtons,
+                ],
+              ),
             ],
           );
         },
+      ),
+    );
+  }
+
+  // Empty State Widget
+  Widget _buildEmptyState(bool isEn, bool isDark) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(40),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+        ),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF0F172A) : Colors.grey.shade100,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.local_offer_outlined, size: 48, color: isDark ? const Color(0xFF64748B) : Colors.grey.shade400),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            isEn ? 'No offers registered' : 'لا توجد عروض مسجلة',
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: isDark ? Colors.white : const Color(0xFF0F172A)),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            isEn
+                ? 'Click "Create Offer" to publish your first retail promotion.'
+                : 'انقر على "إنشاء عرض جديد" لنشر أول عرض ترويجي في النظام.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12.5, color: isDark ? const Color(0xFF94A3B8) : Colors.grey.shade600),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF16A34A),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => _showOfferModal(),
+            icon: const Icon(Icons.add, size: 18),
+            label: Text(isEn ? 'Create Offer' : 'إنشاء عرض جديد', style: const TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Action Button Builder matching Angular
+  Widget _buildActionButton({
+    required IconData icon,
+    required String tooltip,
+    required bool isDark,
+    required VoidCallback onPressed,
+    required Color hoverColor,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: isDark ? const Color(0xFF0F172A) : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+              ),
+            ),
+            child: Center(
+              child: Icon(
+                icon,
+                size: 18,
+                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -14,6 +14,8 @@ import 'package:dealspot_flutter/core/services/product_repository.dart';
 import 'package:dealspot_flutter/core/services/brand_repository.dart';
 import 'package:dealspot_flutter/features/admin/presentation/cruds/offers_crud_screen.dart';
 import 'package:dealspot_flutter/core/services/offer_repository.dart';
+import 'package:dealspot_flutter/features/admin/presentation/cruds/flyer_pages_crud_screen.dart';
+import 'package:dealspot_flutter/core/services/flyer_repository.dart';
 import 'package:dealspot_flutter/models/models.dart';
 
 void main() {
@@ -545,6 +547,65 @@ void main() {
     expect(find.text('Edit Promotion Deal'), findsOneWidget);
     expect(find.text('Offer Title (EN) *'), findsOneWidget);
   });
+
+  testWidgets('Test FlyerPagesCrudScreen renders properly and shows modal', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1200, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final flyer = Flyer(
+      id: 1,
+      storeId: 1,
+      cityId: 1,
+      titleEn: 'Weekly Super Savings',
+      titleAr: 'توفيرات الأسبوع الكبرى',
+      coverImageUrl: '',
+      totalPages: 2,
+      validFrom: '2026-09-01',
+      validUntil: '2026-09-08',
+      isActive: 1,
+      viewCount: 150,
+    );
+
+    final pages = [
+      const FlyerPage(id: 101, flyerId: 1, pageNumber: 1, imageUrl: '', thumbUrl: ''),
+      const FlyerPage(id: 102, flyerId: 1, pageNumber: 2, imageUrl: '', thumbUrl: ''),
+    ];
+
+    final container = ProviderContainer(
+      overrides: [
+        flyerRepositoryProvider.overrideWith((ref) => MockFlyerNotifier([flyer], pages)),
+        storeRepositoryProvider.overrideWith((ref) => MockStoreNotifier([])),
+        cityRepositoryProvider.overrideWith((ref) => MockCityNotifier([])),
+      ],
+    );
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          home: Scaffold(
+            body: FlyerPagesCrudScreen(flyerId: 1),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    expect(find.byType(FlyerPagesCrudScreen), findsOneWidget);
+    expect(find.text('CATALOGUE PAGES'), findsOneWidget);
+    expect(find.textContaining('Weekly Super Savings'), findsWidgets);
+    expect(find.text('Page 1 (Cover)'), findsOneWidget);
+    expect(find.text('Page 2'), findsOneWidget);
+
+    // Tap Add Page Image button
+    await tester.tap(find.text('Add Page Image'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Page Number / Index *'), findsOneWidget);
+    expect(find.text('Page Image File *'), findsOneWidget);
+  });
 }
 
 class MockOfferNotifier extends StateNotifier<OfferState> implements OfferNotifier {
@@ -695,3 +756,25 @@ class MockBrandNotifier extends StateNotifier<BrandState> implements BrandNotifi
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
+
+class MockFlyerNotifier extends StateNotifier<FlyerState> implements FlyerNotifier {
+  MockFlyerNotifier(List<Flyer> initialFlyers, List<FlyerPage> initialPages)
+      : super(FlyerState(flyers: initialFlyers, pages: initialPages, isLoading: false));
+
+  @override
+  Future<void> fetchFlyers({int? storeId}) async {}
+
+  @override
+  Future<Flyer?> fetchFlyerById(int id) async {
+    return state.flyers.where((f) => f.id == id).firstOrNull;
+  }
+
+  @override
+  Future<List<FlyerPage>> fetchFlyerPages(int flyerId) async {
+    return state.pages.where((p) => p.flyerId == flyerId).toList();
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+

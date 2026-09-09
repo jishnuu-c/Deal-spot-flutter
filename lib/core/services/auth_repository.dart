@@ -194,14 +194,21 @@ class AuthNotifier extends StateNotifier<AuthState> {
         final data = response.data as Map<String, dynamic>;
         final token = data['token'] as String? ?? '';
         final role = data['role'] as String? ?? 'superadmin';
+        final storeId = (data['storeId'] as num?)?.toInt() ??
+            (data['store_id'] as num?)?.toInt() ??
+            int.tryParse(data['storeId']?.toString() ?? '') ??
+            int.tryParse(data['store_id']?.toString() ?? '');
 
         final admin = AdminUser(
           id: (data['id'] as num?)?.toInt() ?? 1,
-          fullName: data['fullName'] as String? ?? 'System Administrator',
+          fullName: data['fullName'] as String? ??
+              data['full_name'] as String? ??
+              'System Administrator',
           email: data['email'] as String? ?? email,
           role: role,
           isActive: 1,
           lastLoginAt: DateTime.now().toIso8601String(),
+          storeId: storeId,
         );
 
         final user = User(

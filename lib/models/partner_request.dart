@@ -65,12 +65,12 @@ class PartnerRequest extends Equatable {
     }
 
     return PartnerRequest(
-      id: json['id'] as int? ?? 0,
-      applicantName: json['applicantName'] as String? ?? '',
-      applicantEmail: json['applicantEmail'] as String? ?? '',
-      applicantPhone: json['applicantPhone'] as String? ?? '',
-      storeNameEn: json['storeNameEn'] as String? ?? '',
-      storeNameAr: json['storeNameAr'] as String? ?? '',
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      applicantName: json['applicantName'] as String? ?? json['applicant_name'] as String? ?? '',
+      applicantEmail: json['applicantEmail'] as String? ?? json['applicant_email'] as String? ?? '',
+      applicantPhone: json['applicantPhone'] as String? ?? json['applicant_phone'] as String? ?? '',
+      storeNameEn: json['storeNameEn'] as String? ?? json['store_name_en'] as String? ?? '',
+      storeNameAr: json['storeNameAr'] as String? ?? json['store_name_ar'] as String? ?? '',
       descriptionEn: json['descriptionEn'] as String?,
       descriptionAr: json['descriptionAr'] as String?,
       cityId: json['cityId'] as int?,

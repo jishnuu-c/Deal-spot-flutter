@@ -31,10 +31,15 @@ class FlyerPage extends Equatable {
     );
   }
 
-  factory FlyerPage.fromJson(Map<String, dynamic> json) {
+  factory FlyerPage.fromJson(Map<String, dynamic> json, [int? defaultFlyerId]) {
+    final parsedFlyerId = (json['flyerId'] as num?)?.toInt() ??
+        (json['flyer_id'] as num?)?.toInt() ??
+        (json['flyer'] != null && json['flyer'] is Map ? (json['flyer']['id'] as num?)?.toInt() : null) ??
+        defaultFlyerId ??
+        0;
     return FlyerPage(
       id: (json['id'] as num?)?.toInt() ?? 0,
-      flyerId: (json['flyerId'] as num?)?.toInt() ?? (json['flyer_id'] as num?)?.toInt() ?? 0,
+      flyerId: parsedFlyerId,
       pageNumber: (json['pageNumber'] as num?)?.toInt() ?? (json['page_number'] as num?)?.toInt() ?? 1,
       imageUrl: json['imageUrl'] as String? ?? json['image_url'] as String? ?? '',
       thumbUrl: json['thumbUrl'] as String? ?? json['thumb_url'] as String? ?? '',

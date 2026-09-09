@@ -36,11 +36,11 @@ class SavedOffer extends Equatable {
 
   factory SavedOffer.fromJson(Map<String, dynamic> json) {
     return SavedOffer(
-      id: json['id'] as int,
-      userId: json['user_id'] as int,
-      offerId: json['offer_id'] as int,
-      savedAt: json['saved_at'] as String,
-      offer: json['offer'] != null ? Offer.fromJson(json['offer'] as Map<String, dynamic>) : null,
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      userId: (json['userId'] as num?)?.toInt() ?? (json['user_id'] as num?)?.toInt() ?? 0,
+      offerId: (json['offerId'] as num?)?.toInt() ?? (json['offer_id'] as num?)?.toInt() ?? 0,
+      savedAt: (json['savedAt'] ?? json['saved_at'] ?? '').toString(),
+      offer: json['offer'] != null && json['offer'] is Map ? Offer.fromJson(json['offer'] as Map<String, dynamic>) : null,
     );
   }
 

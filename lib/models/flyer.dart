@@ -97,8 +97,10 @@ class Flyer extends Equatable {
         ? ((json['active'] as bool) ? 1 : 0)
         : (json['is_active'] as num?)?.toInt() ?? (json['isActive'] as num?)?.toInt() ?? 1;
 
+    final flyerId = (json['id'] as num?)?.toInt() ?? 0;
+
     return Flyer(
-      id: (json['id'] as num?)?.toInt() ?? 0,
+      id: flyerId,
       storeId: (json['storeId'] as num?)?.toInt() ?? (json['store_id'] as num?)?.toInt() ?? 0,
       cityId: (json['cityId'] as num?)?.toInt() ?? (json['city_id'] as num?)?.toInt() ?? 1,
       titleEn: json['titleEn'] as String? ?? json['title_en'] as String? ?? '',
@@ -113,7 +115,7 @@ class Flyer extends Equatable {
       store: storeObj,
       city: json['city'] != null && json['city'] is Map ? City.fromJson(json['city'] as Map<String, dynamic>) : null,
       pages: json['pages'] != null && json['pages'] is List
-          ? (json['pages'] as List).map((e) => FlyerPage.fromJson(e as Map<String, dynamic>)).toList()
+          ? (json['pages'] as List).map((e) => FlyerPage.fromJson(e as Map<String, dynamic>, flyerId)).toList()
           : null,
     );
   }

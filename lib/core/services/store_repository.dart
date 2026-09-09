@@ -452,8 +452,12 @@ class StoreNotifier extends StateNotifier<StoreState> {
     int isActive, [
     String? phone,
     String? address,
+    String? addressEn,
+    String? addressAr,
   ]) async {
     try {
+      final finalAddrEn = addressEn ?? address ?? '';
+      final finalAddrAr = addressAr ?? address ?? '';
       final payload = {
         'storeId': storeId,
         'cityId': cityId,
@@ -463,8 +467,8 @@ class StoreNotifier extends StateNotifier<StoreState> {
         'openTime': open,
         'closeTime': close,
         'phone': phone ?? '',
-        'addressEn': address ?? '',
-        'addressAr': address ?? '',
+        'addressEn': finalAddrEn,
+        'addressAr': finalAddrAr,
         'twentyFourHours': open == '00:00:00' && close == '23:59:59',
         'active': isActive == 1,
       };
@@ -479,6 +483,8 @@ class StoreNotifier extends StateNotifier<StoreState> {
 
     // Fallback local addition
     final newId = state.branches.isEmpty ? 1 : state.branches.map((b) => b.id).reduce((a, b) => a > b ? a : b) + 1;
+    final finalAddrEn = addressEn ?? address;
+    final finalAddrAr = addressAr ?? address;
     final newBranch = StoreBranch(
       id: newId,
       storeId: storeId,
@@ -490,7 +496,9 @@ class StoreNotifier extends StateNotifier<StoreState> {
       closeTime: close,
       isActive: isActive,
       contactPhone: phone,
-      addressLine: address,
+      addressLine: finalAddrEn ?? finalAddrAr,
+      addressEn: finalAddrEn,
+      addressAr: finalAddrAr,
     );
     state = state.copyWith(branches: [newBranch, ...state.branches]);
     return true;
@@ -507,8 +515,12 @@ class StoreNotifier extends StateNotifier<StoreState> {
     int isActive, [
     String? phone,
     String? address,
+    String? addressEn,
+    String? addressAr,
   ]) async {
     try {
+      final finalAddrEn = addressEn ?? address ?? '';
+      final finalAddrAr = addressAr ?? address ?? '';
       final payload = {
         'cityId': cityId,
         'branchName': name,
@@ -517,8 +529,8 @@ class StoreNotifier extends StateNotifier<StoreState> {
         'openTime': open,
         'closeTime': close,
         'phone': phone ?? '',
-        'addressEn': address ?? '',
-        'addressAr': address ?? '',
+        'addressEn': finalAddrEn,
+        'addressAr': finalAddrAr,
         'twentyFourHours': open == '00:00:00' && close == '23:59:59',
         'active': isActive == 1,
       };
@@ -533,6 +545,8 @@ class StoreNotifier extends StateNotifier<StoreState> {
       }
     } catch (_) {}
 
+    final finalAddrEn = addressEn ?? address;
+    final finalAddrAr = addressAr ?? address;
     state = state.copyWith(
       branches: state.branches.map((b) {
         if (b.id == id) {
@@ -545,7 +559,9 @@ class StoreNotifier extends StateNotifier<StoreState> {
             closeTime: close,
             isActive: isActive,
             contactPhone: phone,
-            addressLine: address,
+            addressLine: finalAddrEn ?? finalAddrAr,
+            addressEn: finalAddrEn,
+            addressAr: finalAddrAr,
           );
         }
         return b;

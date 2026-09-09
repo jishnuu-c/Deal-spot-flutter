@@ -5,7 +5,6 @@ import '../../../core/services/auth_repository.dart';
 import '../../../core/services/city_repository.dart';
 import '../../../core/services/notification_repository.dart';
 import '../../../core/utils/translation_service.dart';
-import '../../../models/models.dart';
 
 class PublicLayout extends ConsumerStatefulWidget {
   final Widget child;
@@ -166,6 +165,11 @@ class _PublicLayoutState extends ConsumerState<PublicLayout> {
     }
 
     final selectedIndex = _calculateSelectedIndex(context);
+    final location = GoRouterState.of(context).matchedLocation;
+    final isDetailRoute = location.contains(RegExp(r'/(offers|stores|flyers|products)/\d+')) ||
+        location.startsWith('/categories/') ||
+        location.endsWith('/branches');
+    final canPop = context.canPop();
 
     return Directionality(
       textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
@@ -173,7 +177,19 @@ class _PublicLayoutState extends ConsumerState<PublicLayout> {
         appBar: AppBar(
           elevation: 0.5,
           backgroundColor: isDark ? const Color(0xFF131C2E) : Colors.white,
-          titleSpacing: 8,
+          titleSpacing: isDetailRoute ? 0 : 8,
+          leading: isDetailRoute
+              ? IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () {
+                    if (canPop) {
+                      context.pop();
+                    } else {
+                      context.go('/');
+                    }
+                  },
+                )
+              : null,
           title: InkWell(
             onTap: () => context.go('/'),
             borderRadius: BorderRadius.circular(8),
@@ -307,8 +323,8 @@ class _PublicLayoutState extends ConsumerState<PublicLayout> {
         ),
         body: Column(
           children: [
-            // Sticky Search Bar on Main Public Views
-            if (selectedIndex < 4)
+            // Sticky Search Bar on Main Root/List Views (hidden on detail pages)
+            if (selectedIndex < 4 && !isDetailRoute)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 color: isDark ? const Color(0xFF131C2E) : Colors.white,

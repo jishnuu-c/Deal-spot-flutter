@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http_parser/http_parser.dart';
-import 'package:image_picker/image_picker.dart' hide Category;
+import 'package:image_picker/image_picker.dart';
 import '../../models/models.dart';
 import 'api_client.dart';
 import 'city_repository.dart';
@@ -10,6 +10,7 @@ import 'category_repository.dart';
 import 'store_repository.dart';
 import 'product_repository.dart';
 import 'brand_repository.dart';
+
 
 class OfferFilters {
   final int? cityId;
@@ -128,6 +129,37 @@ class OfferNotifier extends StateNotifier<OfferState> {
     } catch (_) {}
   }
 
+  List<Offer> getValidOffers({int? cityId}) {
+    final now = DateTime.now();
+    final todayStr = '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+
+    return state.offers.where((o) {
+      final isActive = o.isActive == 1;
+      final isNotExpired = !o.isExpired && o.status != 'EXPIRED' && (o.validUntil.isEmpty || o.validUntil.compareTo(todayStr) >= 0);
+      if (!isActive || !isNotExpired) return false;
+
+      if (cityId != null && cityId > 0) {
+        final cId = o.cityId != 0 ? o.cityId : (o.store?.cityId ?? 0);
+        return cId == 0 || cId == cityId;
+      }
+      return true;
+    }).map((o) => _populateOffer(o)).toList();
+  }
+
+  List<Offer> getFlashDeals({int? cityId}) {
+    return getValidOffers(cityId: cityId).where((o) => o.isFlash == 1 || o.badgeType == 'FLASH').toList();
+  }
+
+  List<Offer> getFeaturedOffers({int? cityId}) {
+    return getValidOffers(cityId: cityId).where((o) => o.isFeatured == 1 || o.badgeType == 'FEATURED').toList();
+  }
+
+  List<Offer> getLatestOffers({int? cityId, int limit = 8}) {
+    final valid = getValidOffers(cityId: cityId);
+    if (valid.length <= limit) return valid;
+    return valid.sublist(0, limit);
+  }
+
   List<Offer> getOffers([OfferFilters? filters]) {
     var list = state.offers;
 
@@ -135,8 +167,11 @@ class OfferNotifier extends StateNotifier<OfferState> {
       if (filters.onlySaved == true) {
         list = list.where((o) => state.savedOfferIds.contains(o.id)).toList();
       }
-      if (filters.cityId != null) {
-        list = list.where((o) => o.cityId == filters.cityId).toList();
+      if (filters.cityId != null && filters.cityId! > 0) {
+        list = list.where((o) {
+          final cId = o.cityId != 0 ? o.cityId : (o.store?.cityId ?? 0);
+          return cId == 0 || cId == filters.cityId;
+        }).toList();
       }
       if (filters.subCategoryId != null) {
         list = list.where((o) => o.categoryId == filters.subCategoryId).toList();
@@ -160,8 +195,9 @@ class OfferNotifier extends StateNotifier<OfferState> {
         if (brand != null) {
           list = list.where((o) {
             final prod = o.productId != null ? _ref.read(productRepositoryProvider.notifier).getProductById(o.productId!) : null;
-            return (prod?.brand.toLowerCase() == brand.nameEn.toLowerCase() ||
-                    prod?.brandAr?.toLowerCase() == brand.nameAr.toLowerCase());
+            if (prod == null) return false;
+            return prod.brand.toLowerCase() == brand.nameEn.toLowerCase() ||
+                prod.brandAr.toLowerCase() == brand.nameAr.toLowerCase();
           }).toList();
         }
       }
@@ -169,8 +205,9 @@ class OfferNotifier extends StateNotifier<OfferState> {
         final bName = filters.brandName!.toLowerCase();
         list = list.where((o) {
           final prod = o.productId != null ? _ref.read(productRepositoryProvider.notifier).getProductById(o.productId!) : null;
-          return (prod?.brand.toLowerCase().contains(bName) ?? false) ||
-                 (prod?.brandAr?.toLowerCase().contains(bName) ?? false);
+          if (prod == null) return false;
+          return prod.brand.toLowerCase().contains(bName) ||
+              prod.brandAr.toLowerCase().contains(bName);
         }).toList();
       }
       if (filters.minDiscount != null && filters.minDiscount! > 0) {
@@ -192,7 +229,7 @@ class OfferNotifier extends StateNotifier<OfferState> {
           final productNameEn = product?.nameEn.toLowerCase() ?? '';
           final productNameAr = product?.nameAr.toLowerCase() ?? '';
           final brandNameEn = product?.brand.toLowerCase() ?? '';
-          final brandNameAr = product?.brandAr?.toLowerCase() ?? '';
+          final brandNameAr = product?.brandAr.toLowerCase() ?? '';
 
           return o.titleEn.toLowerCase().contains(q) ||
               o.titleAr.toLowerCase().contains(q) ||
@@ -204,28 +241,20 @@ class OfferNotifier extends StateNotifier<OfferState> {
               brandNameAr.contains(q);
         }).toList();
       }
+
     }
 
     return list.map((o) => _populateOffer(o)).toList();
   }
 
+
   Offer? getOfferById(int id) {
     try {
       final idx = state.offers.indexWhere((o) => o.id == id);
       if (idx == -1) {
-        fetchOfferById(id);
         return null;
       }
-
-      final offer = state.offers[idx];
-      final updatedOffer = offer.copyWith(viewCount: offer.viewCount + 1);
-      
-      final updatedList = [...state.offers];
-      updatedList[idx] = updatedOffer;
-      
-      state = state.copyWith(offers: updatedList);
-
-      return _populateOffer(updatedOffer);
+      return _populateOffer(state.offers[idx]);
     } catch (_) {
       return null;
     }

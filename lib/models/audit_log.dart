@@ -45,14 +45,14 @@ class AuditLog extends Equatable {
 
   factory AuditLog.fromJson(Map<String, dynamic> json) {
     return AuditLog(
-      id: json['id'] as int,
-      entityType: json['entity_type'] as String,
-      entityId: json['entity_id'] as int,
-      action: json['action'] as String,
-      performedBy: json['performed_by'] as int,
-      ipAddress: json['ip_address'] as String?,
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      entityType: (json['entityType'] ?? json['entity_type'] ?? '').toString(),
+      entityId: (json['entityId'] as num?)?.toInt() ?? (json['entity_id'] as num?)?.toInt() ?? 0,
+      action: (json['action'] ?? '').toString(),
+      performedBy: (json['performedBy'] as num?)?.toInt() ?? (json['performed_by'] as num?)?.toInt() ?? 0,
+      ipAddress: json['ipAddress'] as String? ?? json['ip_address'] as String?,
       payload: json['payload'] as Map<String, dynamic>?,
-      createdAt: json['created_at'] as String,
+      createdAt: (json['createdAt'] ?? json['created_at'] ?? '').toString(),
     );
   }
 
