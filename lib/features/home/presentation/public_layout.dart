@@ -63,89 +63,166 @@ class _PublicLayoutState extends ConsumerState<PublicLayout> {
         final theme = Theme.of(ctx);
         final isDark = theme.brightness == Brightness.dark;
 
-        return Directionality(
-          textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E293B) : Colors.white,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.location_on, color: Color(0xFF16A34A), size: 24),
-                        const SizedBox(width: 8),
-                        Text(
-                          tr.get('select_city'),
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(ctx),
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Directionality(
+              textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
+              child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.75,
+                ),
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.15),
+                      blurRadius: 20,
+                      offset: const Offset(0, -4),
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  tr.get('select_city_desc'),
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: isDark ? Colors.white70 : Colors.black54,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: cityState.cities.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
-                  itemBuilder: (context, index) {
-                    final city = cityState.cities[index];
-                    final isSelected = city.id == cityState.selectedCity?.id;
-                    return ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      leading: Container(
-                        padding: const EdgeInsets.all(8),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Sheet Drag Handle
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        margin: const EdgeInsets.only(bottom: 16),
                         decoration: BoxDecoration(
-                          color: isSelected ? const Color(0xFF16A34A).withOpacity(0.15) : (isDark ? Colors.white10 : Colors.black.withOpacity(0.04)),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.location_city,
-                          color: isSelected ? const Color(0xFF16A34A) : Colors.grey,
-                          size: 20,
+                          color: isDark ? Colors.white24 : const Color(0xFFCBD5E1),
+                          borderRadius: BorderRadius.circular(2),
                         ),
                       ),
-                      title: Text(
-                        isRtl ? city.nameAr : city.nameEn,
-                        style: TextStyle(
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                          color: isSelected ? const Color(0xFF16A34A) : null,
+                    ),
+
+                    // Header Row
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF16A34A).withOpacity(0.12),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.place, color: Color(0xFF16A34A), size: 20),
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              tr.get('select_city'),
+                              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                            ),
+                          ],
                         ),
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 20),
+                          onPressed: () => Navigator.pop(ctx),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      tr.get('select_city_desc'),
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        color: isDark ? Colors.white60 : const Color(0xFF64748B),
                       ),
-                      trailing: isSelected
-                          ? const Icon(Icons.check_circle, color: Color(0xFF16A34A))
-                          : null,
-                      onTap: () {
-                        ref.read(cityRepositoryProvider.notifier).selectCity(city);
-                        Navigator.pop(ctx);
-                      },
-                    );
-                  },
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Cities List
+                    Flexible(
+                      child: ListView(
+                        shrinkWrap: true,
+                        children: [
+                          // "All Cities" Option
+                          ListTile(
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: cityState.selectedCity == null
+                                    ? const Color(0xFF16A34A).withOpacity(0.15)
+                                    : (isDark ? Colors.white10 : const Color(0xFFF1F5F9)),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.public,
+                                color: cityState.selectedCity == null ? const Color(0xFF16A34A) : Colors.grey,
+                                size: 18,
+                              ),
+                            ),
+                            title: Text(
+                              isRtl ? 'جميع المدن' : 'All Cities',
+                              style: TextStyle(
+                                fontWeight: cityState.selectedCity == null ? FontWeight.bold : FontWeight.w500,
+                                color: cityState.selectedCity == null ? const Color(0xFF16A34A) : null,
+                                fontSize: 14,
+                              ),
+                            ),
+                            trailing: cityState.selectedCity == null
+                                ? const Icon(Icons.check_circle, color: Color(0xFF16A34A), size: 20)
+                                : null,
+                            onTap: () {
+                              ref.read(cityRepositoryProvider.notifier).selectCity(null);
+                              Navigator.pop(ctx);
+                            },
+                          ),
+                          const Divider(height: 1),
+
+                          // Individual Cities
+                          ...cityState.cities.map((city) {
+                            final isSelected = city.id == cityState.selectedCity?.id;
+                            return ListTile(
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              leading: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? const Color(0xFF16A34A).withOpacity(0.15)
+                                      : (isDark ? Colors.white10 : const Color(0xFFF1F5F9)),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.location_city,
+                                  color: isSelected ? const Color(0xFF16A34A) : Colors.grey,
+                                  size: 18,
+                                ),
+                              ),
+                              title: Text(
+                                isRtl ? city.nameAr : city.nameEn,
+                                style: TextStyle(
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                  color: isSelected ? const Color(0xFF16A34A) : null,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              trailing: isSelected
+                                  ? const Icon(Icons.check_circle, color: Color(0xFF16A34A), size: 20)
+                                  : null,
+                              onTap: () {
+                                ref.read(cityRepositoryProvider.notifier).selectCity(city);
+                                Navigator.pop(ctx);
+                              },
+                            );
+                          }),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 16),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
@@ -175,12 +252,13 @@ class _PublicLayoutState extends ConsumerState<PublicLayout> {
       textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
         appBar: AppBar(
-          elevation: 0.5,
+          elevation: 0,
           backgroundColor: isDark ? const Color(0xFF131C2E) : Colors.white,
-          titleSpacing: isDetailRoute ? 0 : 8,
+          surfaceTintColor: Colors.transparent,
+          titleSpacing: isDetailRoute ? 0 : 12,
           leading: isDetailRoute
               ? IconButton(
-                  icon: const Icon(Icons.arrow_back),
+                  icon: Icon(isRtl ? Icons.arrow_forward : Icons.arrow_back),
                   onPressed: () {
                     if (canPop) {
                       context.pop();
@@ -193,104 +271,122 @@ class _PublicLayoutState extends ConsumerState<PublicLayout> {
           title: InkWell(
             onTap: () => context.go('/'),
             borderRadius: BorderRadius.circular(8),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 2.0),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(5),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF16A34A),
-                      borderRadius: BorderRadius.circular(7),
-                    ),
-                    child: const Icon(Icons.local_offer, color: Colors.white, size: 16),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF16A34A),
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF16A34A).withOpacity(0.3),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          tr.get('app_title'),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 15,
-                            letterSpacing: -0.2,
-                            color: Color(0xFF16A34A),
-                          ),
-                        ),
-                        Text(
-                          tr.get('app_subtitle'),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w600,
-                            color: isDark ? Colors.white60 : Colors.black45,
-                          ),
-                        ),
-                      ],
-                    ),
+                  child: const Center(
+                    child: Icon(Icons.local_offer, color: Colors.white, size: 15),
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        tr.get('app_title'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 15.5,
+                          letterSpacing: -0.3,
+                          color: Color(0xFF16A34A),
+                          height: 1.1,
+                        ),
+                      ),
+                      Text(
+                        isRtl ? 'المملكة العربية السعودية' : 'Saudi Arabia',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? Colors.white60 : const Color(0xFF64748B),
+                          height: 1.1,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
           actions: [
-            // City Selector Pill Button
+            // City Selector Pill Button (Matching Angular .city-selector)
             InkWell(
               onTap: () => _openCityModal(context, ref),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(9999),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
                 decoration: BoxDecoration(
                   color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(9999),
                   border: Border.all(color: isDark ? Colors.white12 : const Color(0xFFE2E8F0)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.place, color: Color(0xFF16A34A), size: 14),
-                    const SizedBox(width: 3),
+                    const Icon(Icons.place, color: Color(0xFF16A34A), size: 13),
+                    const SizedBox(width: 2),
                     ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 60),
+                      constraints: const BoxConstraints(maxWidth: 58),
                       child: Text(
                         cityState.selectedCity != null
                             ? (isRtl ? cityState.selectedCity!.nameAr : cityState.selectedCity!.nameEn)
-                            : tr.get('all_cities'),
+                            : (isRtl ? 'جميع المدن' : 'All Cities'),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                        ),
                       ),
                     ),
-                    const Icon(Icons.keyboard_arrow_down, size: 14, color: Colors.grey),
+                    const SizedBox(width: 1),
+                    Icon(Icons.keyboard_arrow_down, size: 14, color: isDark ? Colors.white60 : const Color(0xFF64748B)),
                   ],
                 ),
               ),
             ),
             const SizedBox(width: 4),
 
-            // Language Switcher
+            // Language Switcher Pill (Matching Angular .lang-toggle)
             InkWell(
               onTap: () {
                 ref.read(translationProvider.notifier).toggleLanguage();
               },
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(9999),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
                 decoration: BoxDecoration(
                   color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(9999),
                   border: Border.all(color: isDark ? Colors.white12 : const Color(0xFFE2E8F0)),
                 ),
                 child: Text(
                   isRtl ? 'EN' : 'عربي',
-                  style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF16A34A), fontSize: 11),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF16A34A),
+                    fontSize: 11,
+                  ),
                 ),
               ),
             ),
@@ -299,23 +395,29 @@ class _PublicLayoutState extends ConsumerState<PublicLayout> {
             // Admin Direct Entry (if admin logged in)
             if (authState.isAdminLoggedIn)
               IconButton(
-                icon: const Icon(Icons.admin_panel_settings, color: Color(0xFFF59E0B), size: 20),
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.all(4),
+                constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                icon: const Icon(Icons.admin_panel_settings, color: Color(0xFFF59E0B), size: 19),
                 tooltip: tr.get('admin_panel'),
-                padding: const EdgeInsets.all(6),
-                constraints: const BoxConstraints(),
                 onPressed: () => context.go('/admin'),
               ),
 
-            // Notifications
+            // Notifications Bell
             IconButton(
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.all(4),
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
               icon: Badge(
-                label: unreadCount > 0 ? Text('$unreadCount') : null,
+                label: unreadCount > 0 ? Text('$unreadCount', style: const TextStyle(fontSize: 9)) : null,
                 isLabelVisible: unreadCount > 0,
                 backgroundColor: Colors.redAccent,
-                child: const Icon(Icons.notifications_none_outlined, size: 20),
+                child: Icon(
+                  Icons.notifications_none_rounded,
+                  size: 20,
+                  color: isDark ? Colors.white70 : const Color(0xFF334155),
+                ),
               ),
-              padding: const EdgeInsets.all(6),
-              constraints: const BoxConstraints(),
               onPressed: () => context.go('/notifications'),
             ),
             const SizedBox(width: 4),
@@ -323,10 +425,17 @@ class _PublicLayoutState extends ConsumerState<PublicLayout> {
         ),
         body: Column(
           children: [
-            // Sticky Search Bar on Main Root/List Views (hidden on detail pages)
-            if (selectedIndex < 4 && !isDetailRoute)
+            // Header divider
+            Divider(
+              height: 1,
+              thickness: 1,
+              color: isDark ? Colors.white12 : const Color(0xFFE2E8F0),
+            ),
+
+            // Sticky Search Bar on Home Tab (Matching Angular search-form)
+            if (selectedIndex == 0)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
                 color: isDark ? const Color(0xFF131C2E) : Colors.white,
                 child: TextField(
                   controller: _searchController,
@@ -338,11 +447,11 @@ class _PublicLayoutState extends ConsumerState<PublicLayout> {
                   },
                   decoration: InputDecoration(
                     hintText: isRtl ? 'ابحث عن العروض، المتاجر، الماركات...' : 'Search offers, stores, brands...',
-                    hintStyle: TextStyle(fontSize: 13, color: isDark ? Colors.white38 : Colors.black38),
+                    hintStyle: TextStyle(fontSize: 13, color: isDark ? Colors.white38 : const Color(0xFF94A3B8)),
                     prefixIcon: const Icon(Icons.search, color: Color(0xFF16A34A), size: 20),
                     suffixIcon: _searchController.text.isNotEmpty
                         ? IconButton(
-                            icon: const Icon(Icons.clear, size: 16),
+                            icon: const Icon(Icons.close, size: 16),
                             onPressed: () {
                               _searchController.clear();
                               setState(() {});
@@ -353,58 +462,124 @@ class _PublicLayoutState extends ConsumerState<PublicLayout> {
                     fillColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
                     contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(9999),
                       borderSide: BorderSide(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
                     ),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(9999),
                       borderSide: BorderSide(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(9999),
                       borderSide: const BorderSide(color: Color(0xFF16A34A), width: 1.5),
                     ),
                   ),
                 ),
               ),
+
             Expanded(child: widget.child),
           ],
         ),
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: selectedIndex,
-          onDestinationSelected: (idx) => _onItemTapped(idx, context),
-          backgroundColor: isDark ? const Color(0xFF131C2E) : Colors.white,
-          indicatorColor: const Color(0xFF16A34A).withOpacity(0.18),
-          elevation: 8,
-          destinations: [
-            NavigationDestination(
-              icon: const Icon(Icons.home_outlined),
-              selectedIcon: const Icon(Icons.home, color: Color(0xFF16A34A)),
-              label: tr.get('home'),
+
+        // Bottom Navigation Bar (Matching Angular .mobile-bottom-nav)
+        bottomNavigationBar: Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF131C2E) : Colors.white,
+            border: Border(
+              top: BorderSide(
+                color: isDark ? Colors.white12 : const Color(0xFFE2E8F0),
+                width: 1,
+              ),
             ),
-            NavigationDestination(
-              icon: const Icon(Icons.local_offer_outlined),
-              selectedIcon: const Icon(Icons.local_offer, color: Color(0xFF16A34A)),
-              label: tr.get('offers'),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, -3),
+              ),
+            ],
+          ),
+          child: NavigationBarTheme(
+            data: NavigationBarThemeData(
+              backgroundColor: isDark ? const Color(0xFF131C2E) : Colors.white,
+              indicatorColor: isDark
+                  ? const Color(0xFF16A34A).withOpacity(0.22)
+                  : const Color(0xFFDCFCE7),
+              indicatorShape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(9999),
+              ),
+              labelTextStyle: MaterialStateProperty.resolveWith((states) {
+                if (states.contains(MaterialState.selected)) {
+                  return TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  );
+                }
+                return TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: isDark ? Colors.white60 : const Color(0xFF64748B),
+                );
+              }),
+              iconTheme: MaterialStateProperty.resolveWith((states) {
+                if (states.contains(MaterialState.selected)) {
+                  return const IconThemeData(
+                    color: Color(0xFF16A34A),
+                    size: 22,
+                  );
+                }
+                return IconThemeData(
+                  color: isDark ? Colors.white60 : const Color(0xFF64748B),
+                  size: 22,
+                );
+              }),
             ),
-            NavigationDestination(
-              icon: const Icon(Icons.menu_book_outlined),
-              selectedIcon: const Icon(Icons.menu_book, color: Color(0xFF16A34A)),
-              label: tr.get('flyers'),
+            child: NavigationBar(
+              height: 64,
+              selectedIndex: selectedIndex,
+              onDestinationSelected: (idx) => _onItemTapped(idx, context),
+              elevation: 0,
+              destinations: [
+                NavigationDestination(
+                  icon: const Icon(Icons.home_outlined),
+                  selectedIcon: const Icon(Icons.home),
+                  label: tr.get('home'),
+                ),
+                NavigationDestination(
+                  icon: const Icon(Icons.local_offer_outlined),
+                  selectedIcon: const Icon(Icons.local_offer),
+                  label: tr.get('offers'),
+                ),
+                NavigationDestination(
+                  icon: const Icon(Icons.auto_stories_outlined),
+                  selectedIcon: const Icon(Icons.auto_stories),
+                  label: tr.get('flyers'),
+                ),
+                NavigationDestination(
+                  icon: const Icon(Icons.storefront_outlined),
+                  selectedIcon: const Icon(Icons.storefront),
+                  label: tr.get('stores'),
+                ),
+                NavigationDestination(
+                  icon: Icon(
+                    authState.isAdminLoggedIn
+                        ? Icons.security
+                        : (authState.isLoggedIn ? Icons.account_circle_outlined : Icons.person_outline),
+                  ),
+                  selectedIcon: Icon(
+                    authState.isAdminLoggedIn
+                        ? Icons.security
+                        : (authState.isLoggedIn ? Icons.account_circle : Icons.person),
+                  ),
+                  label: tr.get('profile'),
+                ),
+              ],
             ),
-            NavigationDestination(
-              icon: const Icon(Icons.storefront_outlined),
-              selectedIcon: const Icon(Icons.storefront, color: Color(0xFF16A34A)),
-              label: tr.get('stores'),
-            ),
-            NavigationDestination(
-              icon: const Icon(Icons.person_outline),
-              selectedIcon: const Icon(Icons.person, color: Color(0xFF16A34A)),
-              label: tr.get('profile'),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
+

@@ -45,11 +45,19 @@ class _PartnerRequestsCrudScreenState extends ConsumerState<PartnerRequestsCrudS
     setState(() => _copiedCrId = id);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          isRtl ? 'تم نسخ رقم السجل التجاري: $cr' : 'CR Number copied: $cr',
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Color(0xFF16A34A), size: 18),
+            const SizedBox(width: 8),
+            Text(
+              isRtl ? 'تم نسخ رقم السجل التجاري: $cr' : 'CR Number copied: $cr',
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ],
         ),
         duration: const Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         backgroundColor: const Color(0xFF1E293B),
       ),
     );
@@ -65,7 +73,10 @@ class _PartnerRequestsCrudScreenState extends ConsumerState<PartnerRequestsCrudS
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not launch $urlString')),
+          SnackBar(
+            content: Text('Could not launch: $urlString'),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     }
@@ -107,18 +118,19 @@ class _PartnerRequestsCrudScreenState extends ConsumerState<PartnerRequestsCrudS
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: const Color(0xFF16A34A).withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.verified_outlined, color: Color(0xFF16A34A), size: 24),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 14),
             Expanded(
               child: Text(
                 isRtl ? 'اعتماد شريك المتجر؟' : 'Approve Store Partner?',
@@ -138,22 +150,41 @@ class _PartnerRequestsCrudScreenState extends ConsumerState<PartnerRequestsCrudS
             Text(
               isRtl
                   ? 'هل أنت متأكد من اعتماد متجر ${req.storeNameAr.isNotEmpty ? req.storeNameAr : req.storeNameEn}؟'
-                  : 'Are you sure you want to approve ${req.storeNameEn}?',
+                  : 'Are you sure you want to approve "${req.storeNameEn}"?',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
                 color: isDark ? Colors.white : const Color(0xFF0F172A),
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              isRtl
-                  ? 'سيتم تلقائياً إنشاء المتجر الموثق وتفعيل صلاحية مدير المتجر للبريد:\n${req.applicantEmail}'
-                  : 'This will automatically create the verified store and grant Store Manager access to:\n${req.applicantEmail}',
-              style: TextStyle(
-                fontSize: 13,
-                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                height: 1.4,
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF0FDF4),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: isDark ? const Color(0xFF16A34A).withValues(alpha: 0.3) : const Color(0xFFBBF7D0),
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.info_outline, size: 18, color: Color(0xFF16A34A)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      isRtl
+                          ? 'سيتم تلقائياً إنشاء المتجر الموثق وتفعيل صلاحية مدير المتجر للبريد:\n${req.applicantEmail}'
+                          : 'This will automatically create the verified store and grant Store Manager access to:\n${req.applicantEmail}',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF166534),
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -171,7 +202,7 @@ class _PartnerRequestsCrudScreenState extends ConsumerState<PartnerRequestsCrudS
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF16A34A),
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               elevation: 0,
             ),
@@ -201,18 +232,19 @@ class _PartnerRequestsCrudScreenState extends ConsumerState<PartnerRequestsCrudS
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: const Color(0xFF16A34A).withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.check_circle, color: Color(0xFF16A34A), size: 28),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 14),
             Expanded(
               child: Text(
                 isRtl ? 'تم اعتماد المتجر بنجاح!' : 'Store Partner Approved!',
@@ -240,10 +272,11 @@ class _PartnerRequestsCrudScreenState extends ConsumerState<PartnerRequestsCrudS
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF16A34A),
               foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             onPressed: () => Navigator.pop(ctx),
-            child: Text(isRtl ? 'حسناً' : 'Done'),
+            child: Text(isRtl ? 'حسناً' : 'Done', style: const TextStyle(fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -256,18 +289,19 @@ class _PartnerRequestsCrudScreenState extends ConsumerState<PartnerRequestsCrudS
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: const Color(0xFFDC2626).withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.cancel_outlined, color: Color(0xFFDC2626), size: 24),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 14),
             Expanded(
               child: Text(
                 isRtl ? 'رفض طلب الشراكة' : 'Reject Partner Application',
@@ -316,6 +350,12 @@ class _PartnerRequestsCrudScreenState extends ConsumerState<PartnerRequestsCrudS
                     color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
                   ),
                 ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(
+                    color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                  ),
+                ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                   borderSide: const BorderSide(color: Color(0xFFDC2626), width: 1.5),
@@ -337,7 +377,7 @@ class _PartnerRequestsCrudScreenState extends ConsumerState<PartnerRequestsCrudS
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFDC2626),
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               elevation: 0,
             ),
@@ -352,6 +392,7 @@ class _PartnerRequestsCrudScreenState extends ConsumerState<PartnerRequestsCrudS
                   content: Text(isRtl ? 'تم تسجيل رفض طلب الشراكة.' : 'Application rejected.'),
                   backgroundColor: const Color(0xFFDC2626),
                   behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
               );
             },
@@ -370,10 +411,11 @@ class _PartnerRequestsCrudScreenState extends ConsumerState<PartnerRequestsCrudS
       context: context,
       builder: (ctx) => Dialog(
         backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+        surfaceTintColor: Colors.transparent,
         insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 680, maxHeight: 780),
+          constraints: const BoxConstraints(maxWidth: 680, maxHeight: 800),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -383,8 +425,8 @@ class _PartnerRequestsCrudScreenState extends ConsumerState<PartnerRequestsCrudS
                 child: Row(
                   children: [
                     Container(
-                      width: 44,
-                      height: 44,
+                      width: 46,
+                      height: 46,
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
                           colors: [Color(0xFFFEF3C7), Color(0xFFFDE68A)],
@@ -394,7 +436,7 @@ class _PartnerRequestsCrudScreenState extends ConsumerState<PartnerRequestsCrudS
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.4)),
                       ),
-                      child: const Icon(Icons.storefront_outlined, color: Color(0xFFD97706), size: 24),
+                      child: const Icon(Icons.storefront_rounded, color: Color(0xFFD97706), size: 24),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -473,7 +515,7 @@ class _PartnerRequestsCrudScreenState extends ConsumerState<PartnerRequestsCrudS
                       ),
                       const SizedBox(height: 10),
                       Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        padding: const EdgeInsets.symmetric(vertical: 5),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -528,7 +570,7 @@ class _PartnerRequestsCrudScreenState extends ConsumerState<PartnerRequestsCrudS
                         _buildInfoRow(isRtl ? 'الرقم الضريبي:' : 'VAT Tax Number:', req.vatNumber!, isDark, isMonospace: true),
                       if (req.website != null && req.website!.isNotEmpty)
                         Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          padding: const EdgeInsets.symmetric(vertical: 5),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -562,7 +604,7 @@ class _PartnerRequestsCrudScreenState extends ConsumerState<PartnerRequestsCrudS
                           ),
                         ),
                       Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        padding: const EdgeInsets.symmetric(vertical: 5),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -589,7 +631,7 @@ class _PartnerRequestsCrudScreenState extends ConsumerState<PartnerRequestsCrudS
                       const SizedBox(height: 10),
                       LayoutBuilder(
                         builder: (context, constraints) {
-                          final isNarrow = constraints.maxWidth < 460;
+                          final isNarrow = constraints.maxWidth < 480;
                           final cards = [
                             _buildMiniContactCard(
                               icon: Icons.person_outline,
@@ -661,7 +703,7 @@ class _PartnerRequestsCrudScreenState extends ConsumerState<PartnerRequestsCrudS
                           const SizedBox(height: 4),
                           Container(
                             width: double.infinity,
-                            padding: const EdgeInsets.all(10),
+                            padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
                               color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
                               borderRadius: BorderRadius.circular(8),
@@ -690,7 +732,7 @@ class _PartnerRequestsCrudScreenState extends ConsumerState<PartnerRequestsCrudS
                           const SizedBox(height: 4),
                           Container(
                             width: double.infinity,
-                            padding: const EdgeInsets.all(10),
+                            padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
                               color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
                               borderRadius: BorderRadius.circular(8),
@@ -745,9 +787,12 @@ class _PartnerRequestsCrudScreenState extends ConsumerState<PartnerRequestsCrudS
               // Modal Footer
               Divider(height: 1, color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
               Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                child: Wrap(
+                  spacing: 10,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     OutlinedButton(
                       style: OutlinedButton.styleFrom(
@@ -759,7 +804,9 @@ class _PartnerRequestsCrudScreenState extends ConsumerState<PartnerRequestsCrudS
                       child: Text(isRtl ? 'إغلاق' : 'Close'),
                     ),
                     if (req.status == PartnerRequestStatus.PENDING) ...[
-                      Row(
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
                         children: [
                           OutlinedButton.icon(
                             style: OutlinedButton.styleFrom(
@@ -774,7 +821,6 @@ class _PartnerRequestsCrudScreenState extends ConsumerState<PartnerRequestsCrudS
                               _showRejectDialog(context, req, isRtl, isDark);
                             },
                           ),
-                          const SizedBox(width: 8),
                           ElevatedButton.icon(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF16A34A),
@@ -1492,7 +1538,7 @@ class _PartnerRequestsCrudScreenState extends ConsumerState<PartnerRequestsCrudS
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isPending
-              ? const Color(0xFFF59E0B).withValues(alpha: isDark ? 0.4 : 0.6)
+              ? const Color(0xFFF59E0B).withValues(alpha: isDark ? 0.45 : 0.6)
               : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
           width: isPending ? 1.5 : 1.0,
         ),
@@ -1500,434 +1546,510 @@ class _PartnerRequestsCrudScreenState extends ConsumerState<PartnerRequestsCrudS
           BoxShadow(
             color: isPending
                 ? const Color(0xFFF59E0B).withValues(alpha: isDark ? 0.1 : 0.06)
-                : Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                : Colors.black.withValues(alpha: isDark ? 0.18 : 0.03),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 1. Card Header: Brand, Category, Status & 3-Dots Menu
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 12, 12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Store Avatar
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-                    ),
-                  ),
-                  child: const Icon(
-                    Icons.storefront_outlined,
-                    color: Color(0xFF16A34A),
-                    size: 26,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(15),
+        child: Stack(
+          children: [
+            // Left (or Right in RTL) accent stripe for pending cards
+            if (isPending)
+              Positioned(
+                top: 0,
+                bottom: 0,
+                left: isRtl ? null : 0,
+                right: isRtl ? 0 : null,
+                child: Container(
+                  width: 4,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFD97706),
                   ),
                 ),
-                const SizedBox(width: 12),
-
-                // Titles & Category
-                Expanded(
-                  child: Column(
+              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 1. Card Header: Brand, Category, Status & 3-Dots Menu
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    isRtl ? 12 : (isPending ? 20 : 16),
+                    16,
+                    isRtl ? (isPending ? 20 : 16) : 12,
+                    12,
+                  ),
+                  child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        isRtl
-                            ? (req.storeNameAr.isNotEmpty ? req.storeNameAr : req.storeNameEn)
-                            : req.storeNameEn,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 15.5,
-                          fontWeight: FontWeight.w800,
-                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      // Store Avatar
+                      Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFFEF3C7), Color(0xFFFDE68A)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: const Color(0xFFF59E0B).withValues(alpha: 0.35),
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.storefront_rounded,
+                          color: Color(0xFFD97706),
+                          size: 24,
                         ),
                       ),
-                      if (isRtl && req.storeNameEn.isNotEmpty && req.storeNameEn != req.storeNameAr)
-                        Text(
-                          req.storeNameEn,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                          ),
-                        ),
-                      if (!isRtl && req.storeNameAr.isNotEmpty && req.storeNameAr != req.storeNameEn)
-                        Text(
-                          req.storeNameAr,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                          ),
-                        ),
-                      const SizedBox(height: 4),
-                      // Category Chip
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
+                      const SizedBox(width: 12),
+
+                      // Titles & Category
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(Icons.category_outlined, size: 12, color: Color(0xFF16A34A)),
-                            const SizedBox(width: 4),
                             Text(
                               isRtl
-                                  ? (req.categoryNameAr ?? req.categoryNameEn ?? 'تجزئة')
-                                  : (req.categoryNameEn ?? 'Retail'),
+                                  ? (req.storeNameAr.isNotEmpty ? req.storeNameAr : req.storeNameEn)
+                                  : req.storeNameEn,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569),
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: isDark ? Colors.white : const Color(0xFF0F172A),
+                              ),
+                            ),
+                            if (isRtl && req.storeNameEn.isNotEmpty && req.storeNameEn != req.storeNameAr)
+                              Text(
+                                req.storeNameEn,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                ),
+                              ),
+                            if (!isRtl && req.storeNameAr.isNotEmpty && req.storeNameAr != req.storeNameEn)
+                              Text(
+                                req.storeNameAr,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                ),
+                              ),
+                            const SizedBox(height: 4),
+                            // Category Chip
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF10B981).withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.category_outlined, size: 12, color: Color(0xFF10B981)),
+                                  const SizedBox(width: 4),
+                                  Flexible(
+                                    child: Text(
+                                      isRtl
+                                          ? (req.categoryNameAr ?? req.categoryNameEn ?? 'تجزئة')
+                                          : (req.categoryNameEn ?? 'Retail'),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF10B981),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
                       ),
+
+                      // Status pill & 3-Dots Menu
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildStatusPill(req.status, isRtl, isDark),
+                          _buildCardActionMenu(req, isRtl, isDark),
+                        ],
+                      ),
                     ],
                   ),
                 ),
+                Divider(height: 1, color: isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9)),
 
-                // Status pill & 3-Dots Menu
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildStatusPill(req.status, isRtl, isDark),
-                    _buildCardActionMenu(req, isRtl, isDark),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Divider(height: 1, color: isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9)),
-
-          // 2. Card Body Summary: City, Date, CR, Manager
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // City & Date Row
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF2563EB).withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                // 2. Card Body Summary: City, Date, CR, Manager
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    isRtl ? 16 : (isPending ? 20 : 16),
+                    14,
+                    isRtl ? (isPending ? 20 : 16) : 16,
+                    14,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // City & Date Row
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Icon(Icons.place_outlined, size: 13, color: Color(0xFF2563EB)),
-                          const SizedBox(width: 4),
-                          Text(
-                            isRtl
-                                ? (req.cityNameAr ?? req.cityNameEn ?? 'المملكة')
-                                : (req.cityNameEn ?? 'Saudi Arabia'),
-                            style: const TextStyle(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF2563EB),
+                          Flexible(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF2563EB).withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.place_outlined, size: 13, color: Color(0xFF2563EB)),
+                                  const SizedBox(width: 4),
+                                  Flexible(
+                                    child: Text(
+                                      isRtl
+                                          ? (req.cityNameAr ?? req.cityNameEn ?? 'المملكة')
+                                          : (req.cityNameEn ?? 'Saudi Arabia'),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF2563EB),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
+                          ),
+                          const SizedBox(width: 8),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.schedule_rounded,
+                                size: 13,
+                                color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                dateStr,
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.schedule_rounded,
-                          size: 13,
-                          color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          dateStr,
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                      const SizedBox(height: 10),
+
+                      // Facts Grid: CR & Manager
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
                           ),
                         ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                // Facts Grid: CR & Manager
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      if (req.crNumber != null && req.crNumber!.isNotEmpty) ...[
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        child: Column(
                           children: [
-                            Text(
-                              isRtl ? 'السجل التجاري:' : 'CR Number:',
-                              style: TextStyle(
-                                fontSize: 11.5,
-                                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                              ),
-                            ),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    req.crNumber!,
-                                    style: const TextStyle(
-                                      fontFamily: 'monospace',
+                            if (req.crNumber != null && req.crNumber!.isNotEmpty) ...[
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    isRtl ? 'السجل التجاري:' : 'CR Number:',
+                                    style: TextStyle(
                                       fontSize: 11.5,
-                                      fontWeight: FontWeight.w700,
-                                      color: Color(0xFFD97706),
+                                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                                     ),
+                                  ),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          req.crNumber!,
+                                          style: const TextStyle(
+                                            fontFamily: 'monospace',
+                                            fontSize: 11.5,
+                                            fontWeight: FontWeight.w700,
+                                            color: Color(0xFFD97706),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      InkWell(
+                                        onTap: () => _copyCr(req.crNumber, req.id, isRtl),
+                                        borderRadius: BorderRadius.circular(4),
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(2.0),
+                                          child: Icon(
+                                            _copiedCrId == req.id ? Icons.check : Icons.content_copy,
+                                            size: 14,
+                                            color: _copiedCrId == req.id
+                                                ? const Color(0xFF16A34A)
+                                                : const Color(0xFFD97706),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                            ],
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  isRtl ? 'المسؤول:' : 'Manager:',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                                   ),
                                 ),
-                                const SizedBox(width: 4),
-                                InkWell(
-                                  onTap: () => _copyCr(req.crNumber, req.id, isRtl),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(2.0),
-                                    child: Icon(
-                                      _copiedCrId == req.id ? Icons.check : Icons.content_copy,
-                                      size: 14,
-                                      color: _copiedCrId == req.id
-                                          ? const Color(0xFF16A34A)
-                                          : const Color(0xFFD97706),
-                                    ),
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.person_outline,
+                                        size: 14,
+                                        color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Flexible(
+                                        child: Text(
+                                          req.applicantName,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                            color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
                             ),
                           ],
                         ),
-                        const SizedBox(height: 6),
-                      ],
+                      ),
+                      const SizedBox(height: 10),
+
+                      // Direct Contact Quick Links Strip
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            isRtl ? 'المسؤول:' : 'Manager:',
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                            ),
-                          ),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.person_outline,
-                                size: 14,
-                                color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                req.applicantName,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          Expanded(
+                            child: InkWell(
+                              onTap: () => _launchExternal('mailto:${req.applicantEmail}'),
+                              borderRadius: BorderRadius.circular(8),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.email_outlined, size: 14, color: Color(0xFF2563EB)),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        req.applicantEmail,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: InkWell(
+                              onTap: () => _launchExternal('tel:${req.applicantPhone}'),
+                              borderRadius: BorderRadius.circular(8),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.phone_outlined, size: 14, color: Color(0xFF2563EB)),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(
+                                        req.applicantPhone,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        textDirection: TextDirection.ltr,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
 
-                // Direct Contact Quick Links Strip
-                Row(
-                  children: [
-                    Expanded(
-                      child: InkWell(
-                        onTap: () => _launchExternal('mailto:${req.applicantEmail}'),
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                      // Rejection note
+                      if (req.rejectionReason != null && req.rejectionReason!.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+                            color: const Color(0xFFDC2626).withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFFDC2626).withValues(alpha: 0.25)),
                           ),
                           child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Icon(Icons.email_outlined, size: 14, color: Color(0xFF2563EB)),
+                              const Icon(Icons.info_outline, size: 14, color: Color(0xFFDC2626)),
                               const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
-                                  req.applicantEmail,
-                                  maxLines: 1,
+                                  req.rejectionReason!,
+                                  maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontSize: 11,
-                                    color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155),
+                                    color: Color(0xFFDC2626),
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    InkWell(
-                      onTap: () => _launchExternal('tel:${req.applicantPhone}'),
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(8),
+                      ],
+                    ],
+                  ),
+                ),
+
+                // 3. Card Footer Actions
+                Divider(height: 1, color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    isRtl ? 16 : (isPending ? 20 : 16),
+                    10,
+                    isRtl ? (isPending ? 20 : 16) : 16,
+                    10,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: isDark ? Colors.white : const Color(0xFF0F172A),
+                            side: BorderSide(
+                              color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          icon: const Icon(Icons.visibility_outlined, size: 15),
+                          label: Text(
+                            isRtl ? 'معاينة الطلب' : 'Inspect Details',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
+                          ),
+                          onPressed: () => _showInspectDetailsModal(context, req, isRtl, isDark),
                         ),
-                        child: Row(
+                      ),
+                      if (isPending) ...[
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF16A34A),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              elevation: 0,
+                            ),
+                            icon: const Icon(Icons.verified_outlined, size: 15),
+                            label: Text(
+                              isRtl ? 'اعتماد المتجر' : 'Approve Store',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
+                            ),
+                            onPressed: () => _showApproveDialog(context, req, isRtl, isDark),
+                          ),
+                        ),
+                      ] else if (isApproved) ...[
+                        const SizedBox(width: 8),
+                        Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.phone_outlined, size: 14, color: Color(0xFF2563EB)),
+                            const Icon(Icons.check_circle, color: Color(0xFF16A34A), size: 16),
                             const SizedBox(width: 4),
                             Text(
-                              req.applicantPhone,
-                              textDirection: TextDirection.ltr,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155),
+                              isRtl ? 'تم إنشاء المتجر' : 'Provisioned',
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF16A34A),
                               ),
                             ),
                           ],
                         ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                // Rejection note
-                if (req.rejectionReason != null && req.rejectionReason!.isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFDC2626).withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFDC2626).withValues(alpha: 0.25)),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(Icons.info_outline, size: 14, color: Color(0xFFDC2626)),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            req.rejectionReason!,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: Color(0xFFDC2626),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
                       ],
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-
-          // 3. Card Footer Actions
-          Divider(height: 1, color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: isDark ? Colors.white : const Color(0xFF0F172A),
-                    side: BorderSide(
-                      color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                  icon: const Icon(Icons.visibility_outlined, size: 16),
-                  label: Text(
-                    isRtl ? 'معاينة الطلب' : 'Inspect Details',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-                  ),
-                  onPressed: () => _showInspectDetailsModal(context, req, isRtl, isDark),
-                ),
-                if (isPending) ...[
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF16A34A),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      elevation: 0,
-                    ),
-                    icon: const Icon(Icons.verified_outlined, size: 16),
-                    label: Text(
-                      isRtl ? 'اعتماد المتجر' : 'Approve Store',
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-                    ),
-                    onPressed: () => _showApproveDialog(context, req, isRtl, isDark),
-                  ),
-                ] else if (isApproved) ...[
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.check_circle, color: Color(0xFF16A34A), size: 18),
-                      const SizedBox(width: 4),
-                      Text(
-                        isRtl ? 'تم إنشاء المتجر بنجاح' : 'Store Provisioned',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF16A34A),
-                        ),
-                      ),
                     ],
                   ),
-                ],
+                ),
               ],
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -2065,6 +2187,8 @@ class _PartnerRequestsCrudScreenState extends ConsumerState<PartnerRequestsCrudS
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: DataTable(
+            dataRowMinHeight: 64,
+            dataRowMaxHeight: 74,
             headingRowColor: WidgetStateProperty.all(
               isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
             ),
@@ -2134,10 +2258,17 @@ class _PartnerRequestsCrudScreenState extends ConsumerState<PartnerRequestsCrudS
                           width: 38,
                           height: 38,
                           decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFFEF3C7), Color(0xFFFDE68A)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
                             borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: const Color(0xFFF59E0B).withValues(alpha: 0.35),
+                            ),
                           ),
-                          child: const Icon(Icons.storefront_outlined, color: Color(0xFF16A34A), size: 20),
+                          child: const Icon(Icons.storefront_rounded, color: Color(0xFFD97706), size: 20),
                         ),
                         const SizedBox(width: 10),
                         Column(

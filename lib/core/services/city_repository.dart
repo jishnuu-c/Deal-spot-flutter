@@ -92,10 +92,18 @@ class CityNotifier extends StateNotifier<CityState> {
     selectCity(riyadh);
   }
 
-  Future<void> selectCity(City city) async {
-    state = state.copyWith(selectedCity: city);
+  Future<void> selectCity(City? city) async {
+    state = state.copyWith(selectedCity: city, clearSelectedCity: city == null);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_cityCacheKey, jsonEncode(city.toJson()));
+    if (city != null) {
+      await prefs.setString(_cityCacheKey, jsonEncode(city.toJson()));
+    } else {
+      await prefs.remove(_cityCacheKey);
+    }
+  }
+
+  Future<void> clearCityFilter() async {
+    await selectCity(null);
   }
 
   // Admin CRUD

@@ -163,15 +163,49 @@ class StoreNotifier extends StateNotifier<StoreState> {
     } else {
       updatedList.add(storeId);
     }
-    state = state.copyWith(followedStoreIds: updatedList);
+
+    final updatedStores = state.stores.map((s) {
+      if (s.id == storeId) {
+        final currentCount = s.followersCount ?? 0;
+        final newCount = isCurrentlyFollowed ? (currentCount > 0 ? currentCount - 1 : 0) : currentCount + 1;
+        return s.copyWith(followersCount: newCount, isFollowed: !isCurrentlyFollowed);
+      }
+      return s;
+    }).toList();
+
+    state = state.copyWith(followedStoreIds: updatedList, stores: updatedStores);
 
     try {
       final response = await _apiClient.post('/stores/$storeId/follow-toggle');
       if (response.statusCode == 200 && response.data != null) {
         final isFollowing = response.data['isFollowing'] as bool? ?? !isCurrentlyFollowed;
+        final serverFollowersCount = (response.data['followersCount'] as num?)?.toInt() ??
+            (response.data['followers_count'] as num?)?.toInt();
+        if (serverFollowersCount != null) {
+          state = state.copyWith(
+            stores: state.stores.map((s) => s.id == storeId ? s.copyWith(followersCount: serverFollowersCount) : s).toList(),
+          );
+        }
         return isFollowing;
       }
-    } catch (_) {}
+    } catch (_) {
+      // Rollback on failure
+      final rollbackList = List<int>.from(state.followedStoreIds);
+      if (isCurrentlyFollowed) {
+        rollbackList.add(storeId);
+      } else {
+        rollbackList.remove(storeId);
+      }
+      final rollbackStores = state.stores.map((s) {
+        if (s.id == storeId) {
+          final currentCount = s.followersCount ?? 0;
+          final originalCount = isCurrentlyFollowed ? currentCount + 1 : (currentCount > 0 ? currentCount - 1 : 0);
+          return s.copyWith(followersCount: originalCount, isFollowed: isCurrentlyFollowed);
+        }
+        return s;
+      }).toList();
+      state = state.copyWith(followedStoreIds: rollbackList, stores: rollbackStores);
+    }
 
     return !isCurrentlyFollowed;
   }

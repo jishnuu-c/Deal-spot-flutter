@@ -67,7 +67,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         '/saved-offers',
         '/followed-stores',
         '/notifications',
-        '/profile',
       ];
 
       final isProtectedCustomerPath = protectedCustomerPaths.any((path) => state.matchedLocation.startsWith(path));

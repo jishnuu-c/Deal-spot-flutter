@@ -60,10 +60,12 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen> with Sing
     final cityName = isRtl ? (store.city?.nameAr ?? '') : (store.city?.nameEn ?? '');
     final isFollowed = ref.watch(storeRepositoryProvider).followedStoreIds.contains(store.id);
 
-    // Offers, Flyers, Branches
-    final offers = ref.watch(offerRepositoryProvider.notifier).getOffers(OfferFilters(storeId: store.id));
-    final flyers = ref.watch(flyerRepositoryProvider.notifier).getFlyers().where((f) => f.storeId == store.id).toList();
-    final branches = ref.watch(storeRepositoryProvider.notifier).getBranchesForStore(store.id);
+    // Offers, Flyers, Branches (watching state reactively)
+    ref.watch(offerRepositoryProvider);
+    ref.watch(flyerRepositoryProvider);
+    final offers = ref.read(offerRepositoryProvider.notifier).getOffers(OfferFilters(storeId: store.id));
+    final flyers = ref.read(flyerRepositoryProvider.notifier).getFlyers().where((f) => f.storeId == store.id).toList();
+    final branches = ref.read(storeRepositoryProvider.notifier).getBranchesForStore(store.id);
 
     return Directionality(
       textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
