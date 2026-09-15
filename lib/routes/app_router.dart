@@ -83,39 +83,48 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
-      // Auth Screens
-      GoRoute(
-        path: '/login',
-        builder: (context, state) {
-          final adminParam = state.uri.queryParameters['admin'] == 'true';
-          final returnUrl = state.uri.queryParameters['returnUrl'] ?? '/';
-          return AuthScreen(
-            initialMode: adminParam ? AuthScreenMode.admin : AuthScreenMode.login,
-            returnUrl: returnUrl,
-          );
-        },
-      ),
-      GoRoute(
-        path: '/register',
-        builder: (context, state) {
-          final returnUrl = state.uri.queryParameters['returnUrl'] ?? '/';
-          return AuthScreen(
-            initialMode: AuthScreenMode.register,
-            returnUrl: returnUrl,
-          );
-        },
-      ),
-      GoRoute(
-        path: '/partner-with-us',
-        builder: (context, state) => const PartnerApplyScreen(),
-      ),
-
       // Public / Customer Shell Route inside PublicLayout
       ShellRoute(
         builder: (context, state, child) {
           return PublicLayout(child: child);
         },
         routes: [
+          // Auth Screens
+          GoRoute(
+            path: '/login',
+            builder: (context, state) {
+              final adminParam = state.uri.queryParameters['admin'] == 'true';
+              final returnUrl = state.uri.queryParameters['returnUrl'] ?? '/';
+              return AuthScreen(
+                initialMode: adminParam ? AuthScreenMode.admin : AuthScreenMode.login,
+                returnUrl: returnUrl,
+              );
+            },
+          ),
+          GoRoute(
+            path: '/register',
+            builder: (context, state) {
+              final returnUrl = state.uri.queryParameters['returnUrl'] ?? '/';
+              return AuthScreen(
+                initialMode: AuthScreenMode.register,
+                returnUrl: returnUrl,
+              );
+            },
+          ),
+          GoRoute(
+            path: '/admin/login',
+            builder: (context, state) {
+              final returnUrl = state.uri.queryParameters['returnUrl'] ?? '/admin';
+              return AuthScreen(
+                initialMode: AuthScreenMode.admin,
+                returnUrl: returnUrl,
+              );
+            },
+          ),
+          GoRoute(
+            path: '/partner-with-us',
+            builder: (context, state) => const PartnerApplyScreen(),
+          ),
           GoRoute(
             path: '/',
             builder: (context, state) => const HomeScreen(),

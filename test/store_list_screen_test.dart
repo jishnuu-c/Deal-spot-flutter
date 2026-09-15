@@ -112,13 +112,13 @@ void main() {
     // Verify stores rendered
     expect(find.text('Lulu Hypermarket'), findsOneWidget);
     expect(find.text('Jarir Bookstore'), findsOneWidget);
-    expect(find.text('Verified'), findsOneWidget);
+    expect(find.text('VERIFIED'), findsOneWidget);
     expect(find.text('120 Followers'), findsOneWidget);
     expect(find.text('Following'), findsOneWidget);
     expect(find.text('Follow'), findsOneWidget);
   });
 
-  testWidgets('StoreListScreen renders Mobile Filter Bar on narrow viewport', (tester) async {
+  testWidgets('StoreListScreen renders Mobile Layout with Floating Filter on narrow viewport', (tester) async {
     tester.view.physicalSize = const Size(400, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -126,7 +126,8 @@ void main() {
     await tester.pumpWidget(createTestWidget());
     await tester.pumpAndSettle();
 
-    expect(find.text('Filter & Search'), findsOneWidget);
-    expect(find.text('2 stores'), findsOneWidget);
+    expect(find.byType(FloatingActionButton), findsOneWidget);
+    expect(find.byIcon(Icons.tune), findsOneWidget);
+    expect(find.text('Lulu Hypermarket'), findsOneWidget);
   });
 }

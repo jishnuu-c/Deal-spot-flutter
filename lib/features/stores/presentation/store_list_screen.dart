@@ -63,7 +63,11 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
     });
   }
 
-  void _showAuthRequiredDialog(BuildContext context, AppLocalizations tr, bool isRtl) {
+  void _showAuthRequiredDialog(
+    BuildContext context,
+    AppLocalizations tr,
+    bool isRtl,
+  ) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -87,19 +91,30 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(tr.get('cancel'), style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+            child: Text(
+              tr.get('cancel'),
+              style: const TextStyle(
+                color: Colors.grey,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF10B981),
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
             onPressed: () {
               Navigator.of(ctx).pop();
               context.push('/login');
             },
-            child: Text(tr.get('login'), style: const TextStyle(fontWeight: FontWeight.bold)),
+            child: Text(
+              tr.get('login'),
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -117,19 +132,25 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
       if (_selectedCityId != null && store.cityId != _selectedCityId) {
         return false;
       }
-      if (_selectedCategoryId != null && store.categoryId != _selectedCategoryId) {
+      if (_selectedCategoryId != null &&
+          store.categoryId != _selectedCategoryId) {
         return false;
       }
       if (_searchQuery.trim().isNotEmpty) {
         final query = _searchQuery.trim().toLowerCase();
         final nameEn = store.nameEn.toLowerCase();
         final nameAr = store.nameAr.toLowerCase();
-        final cityEn = (store.cityNameEn ?? store.city?.nameEn ?? '').toLowerCase();
-        final cityAr = (store.cityNameAr ?? store.city?.nameAr ?? '').toLowerCase();
-        final catEn = (store.categoryNameEn ?? store.category?.nameEn ?? '').toLowerCase();
-        final catAr = (store.categoryNameAr ?? store.category?.nameAr ?? '').toLowerCase();
+        final cityEn = (store.cityNameEn ?? store.city?.nameEn ?? '')
+            .toLowerCase();
+        final cityAr = (store.cityNameAr ?? store.city?.nameAr ?? '')
+            .toLowerCase();
+        final catEn = (store.categoryNameEn ?? store.category?.nameEn ?? '')
+            .toLowerCase();
+        final catAr = (store.categoryNameAr ?? store.category?.nameAr ?? '')
+            .toLowerCase();
 
-        final matches = nameEn.contains(query) ||
+        final matches =
+            nameEn.contains(query) ||
             nameAr.contains(query) ||
             cityEn.contains(query) ||
             cityAr.contains(query) ||
@@ -152,7 +173,10 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
     final allStores = storeState.stores;
     final followedStoreIds = storeState.followedStoreIds;
     final cities = ref.watch(cityRepositoryProvider).cities;
-    final categories = ref.watch(categoryRepositoryProvider).where((c) => c.parentId == null && c.isActive == 1).toList();
+    final categories = ref
+        .watch(categoryRepositoryProvider)
+        .where((c) => c.parentId == null && c.isActive == 1)
+        .toList();
 
     final filteredStores = _filterStores(allStores, followedStoreIds);
     final isLoading = storeState.isLoading;
@@ -160,9 +184,63 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
 
     return Directionality(
       textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
-      child: Material(
-        color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-        child: isDesktop
+      child: Scaffold(
+        backgroundColor: isDark
+            ? const Color(0xFF0F172A)
+            : const Color(0xFFF8FAFC),
+        floatingActionButton: isDesktop
+            ? null
+            : FloatingActionButton(
+                onPressed: () => _openMobileFilterDrawer(
+                  context: context,
+                  tr: tr,
+                  isRtl: isRtl,
+                  isDark: isDark,
+                  cities: cities,
+                  categories: categories,
+                  followedStoreIds: followedStoreIds,
+                  filteredCount: filteredStores.length,
+                ),
+                backgroundColor: const Color(0xFF10B981),
+                elevation: 4,
+                shape: const CircleBorder(),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  alignment: Alignment.center,
+                  children: [
+                    const Icon(Icons.tune, color: Colors.white, size: 24),
+                    if (_activeFiltersCount > 0)
+                      Positioned(
+                        top: -8,
+                        right: isRtl ? null : -8,
+                        left: isRtl ? -8 : null,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFEF4444),
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 18,
+                            minHeight: 18,
+                          ),
+                          child: Center(
+                            child: Text(
+                              '$_activeFiltersCount',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                height: 1,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+        body: isDesktop
             ? _buildDesktopLayout(
                 context: context,
                 tr: tr,
@@ -246,33 +324,43 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
                 Expanded(
                   child: isLoading
                       ? const Center(
-                          child: CircularProgressIndicator(color: Color(0xFF10B981)),
+                          child: CircularProgressIndicator(
+                            color: Color(0xFF10B981),
+                          ),
                         )
                       : filteredStores.isEmpty
-                          ? Center(
-                              child: SingleChildScrollView(
-                                padding: const EdgeInsets.all(24),
-                                child: _buildEmptyState(tr: tr, isRtl: isRtl, isDark: isDark),
-                              ),
-                            )
-                          : RefreshIndicator(
-                              color: const Color(0xFF10B981),
-                              onRefresh: () async {
-                                await ref.read(storeRepositoryProvider.notifier).fetchStores();
-                                await ref.read(storeRepositoryProvider.notifier).fetchFollowedStores();
-                              },
-                              child: _buildStoreCardsGrid(
-                                filteredStores: filteredStores,
-                                isRtl: isRtl,
-                                isDark: isDark,
-                                tr: tr,
-                                followedStoreIds: followedStoreIds,
-                                crossAxisCount: 3,
-                                childAspectRatio: 0.68,
-                                logoHeight: 125,
-                                isScrollable: true,
-                              ),
+                      ? Center(
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.all(24),
+                            child: _buildEmptyState(
+                              tr: tr,
+                              isRtl: isRtl,
+                              isDark: isDark,
                             ),
+                          ),
+                        )
+                      : RefreshIndicator(
+                          color: const Color(0xFF10B981),
+                          onRefresh: () async {
+                            await ref
+                                .read(storeRepositoryProvider.notifier)
+                                .fetchStores();
+                            await ref
+                                .read(storeRepositoryProvider.notifier)
+                                .fetchFollowedStores();
+                          },
+                          child: _buildStoreCardsGrid(
+                            filteredStores: filteredStores,
+                            isRtl: isRtl,
+                            isDark: isDark,
+                            tr: tr,
+                            followedStoreIds: followedStoreIds,
+                            crossAxisCount: 3,
+                            childAspectRatio: 0.68,
+                            logoHeight: 125,
+                            isScrollable: true,
+                          ),
+                        ),
                 ),
               ],
             ),
@@ -299,87 +387,18 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Mobile Filter Top Bar
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E293B) : Colors.white,
-            border: Border(bottom: BorderSide(color: isDark ? Colors.white12 : const Color(0xFFE2E8F0))),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Filter & Search Trigger Button
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF10B981),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                ),
-                onPressed: () => _openMobileFilterDrawer(
-                  context: context,
-                  tr: tr,
-                  isRtl: isRtl,
-                  isDark: isDark,
-                  cities: cities,
-                  categories: categories,
-                  followedStoreIds: followedStoreIds,
-                  filteredCount: filteredStores.length,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.tune, size: 17),
-                    const SizedBox(width: 8),
-                    Text(
-                      tr.get('filter_and_search'),
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                    ),
-                    if (_activeFiltersCount > 0) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          '$_activeFiltersCount',
-                          style: const TextStyle(color: Color(0xFF10B981), fontSize: 11, fontWeight: FontWeight.w900),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-
-              // Results Count on Mobile
-              Text(
-                isLoading
-                    ? tr.get('loading')
-                    : '${filteredStores.length} ${isRtl ? 'متجر' : 'stores'}',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: isDark ? Colors.white70 : const Color(0xFF64748B),
-                ),
-              ),
-            ],
-          ),
-        ),
-
         // Active Chips Bar (if filters active)
         if (_activeFiltersCount > 0)
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: isDark ? const Color(0xFF1E293B) : Colors.white,
-              border: Border(bottom: BorderSide(color: isDark ? Colors.white12 : const Color(0xFFE2E8F0))),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isDark ? Colors.white12 : const Color(0xFFE2E8F0),
+              ),
             ),
             child: _buildActiveChipsWrap(
               tr: tr,
@@ -390,37 +409,53 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
             ),
           ),
 
-        // Main Grid / Empty State
+        // Main List / Empty State
         Expanded(
           child: isLoading
               ? const Center(
                   child: CircularProgressIndicator(color: Color(0xFF10B981)),
                 )
               : filteredStores.isEmpty
-                  ? Center(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.all(24),
-                        child: _buildEmptyState(tr: tr, isRtl: isRtl, isDark: isDark),
-                      ),
-                    )
-                  : RefreshIndicator(
-                      color: const Color(0xFF10B981),
-                      onRefresh: () async {
-                        await ref.read(storeRepositoryProvider.notifier).fetchStores();
-                        await ref.read(storeRepositoryProvider.notifier).fetchFollowedStores();
-                      },
-                      child: _buildStoreCardsGrid(
-                        filteredStores: filteredStores,
-                        isRtl: isRtl,
-                        isDark: isDark,
-                        tr: tr,
-                        followedStoreIds: followedStoreIds,
-                        crossAxisCount: 2,
-                        childAspectRatio: 0.58,
-                        logoHeight: 105,
-                        isScrollable: true,
-                      ),
+              ? Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: _buildEmptyState(
+                      tr: tr,
+                      isRtl: isRtl,
+                      isDark: isDark,
                     ),
+                  ),
+                )
+              : RefreshIndicator(
+                  color: const Color(0xFF10B981),
+                  onRefresh: () async {
+                    await ref
+                        .read(storeRepositoryProvider.notifier)
+                        .fetchStores();
+                    await ref
+                        .read(storeRepositoryProvider.notifier)
+                        .fetchFollowedStores();
+                  },
+                  child: ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
+                    itemCount: filteredStores.length,
+                    itemBuilder: (context, index) {
+                      final store = filteredStores[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 14),
+                        child: _buildStoreCard(
+                          context: context,
+                          store: store,
+                          isRtl: isRtl,
+                          isDark: isDark,
+                          tr: tr,
+                          isFollowed: followedStoreIds.contains(store.id),
+                          logoHeight: 125,
+                        ),
+                      );
+                    },
+                  ),
+                ),
         ),
       ],
     );
@@ -442,7 +477,9 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? Colors.white12 : const Color(0xFFE2E8F0)),
+        border: Border.all(
+          color: isDark ? Colors.white12 : const Color(0xFFE2E8F0),
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -457,13 +494,26 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF0F172A).withValues(alpha: 0.5) : const Color(0xFFF8FAFC),
-              borderRadius: const BorderRadius.only(topLeft: Radius.circular(16), topRight: Radius.circular(16)),
-              border: Border(bottom: BorderSide(color: isDark ? Colors.white12 : const Color(0xFFE2E8F0))),
+              color: isDark
+                  ? const Color(0xFF0F172A).withValues(alpha: 0.5)
+                  : const Color(0xFFF8FAFC),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+              ),
+              border: Border(
+                bottom: BorderSide(
+                  color: isDark ? Colors.white12 : const Color(0xFFE2E8F0),
+                ),
+              ),
             ),
             child: Row(
               children: [
-                const Icon(Icons.storefront, color: Color(0xFF10B981), size: 20),
+                const Icon(
+                  Icons.storefront,
+                  color: Color(0xFF10B981),
+                  size: 20,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Row(
@@ -477,21 +527,30 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w800,
-                            color: isDark ? Colors.white : const Color(0xFF0F172A),
+                            color: isDark
+                                ? Colors.white
+                                : const Color(0xFF0F172A),
                           ),
                         ),
                       ),
                       if (_activeFiltersCount > 0) ...[
                         const SizedBox(width: 6),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 1,
+                          ),
                           decoration: BoxDecoration(
                             color: const Color(0xFF10B981),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
                             '$_activeFiltersCount',
-                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
                       ],
@@ -503,9 +562,16 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
                   onTap: _resetFilters,
                   borderRadius: BorderRadius.circular(20),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
-                      border: Border.all(color: isDark ? Colors.white24 : const Color(0xFFE2E8F0)),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white24
+                            : const Color(0xFFE2E8F0),
+                      ),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
@@ -513,7 +579,9 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
-                        color: isDark ? Colors.white70 : const Color(0xFF64748B),
+                        color: isDark
+                            ? Colors.white70
+                            : const Color(0xFF64748B),
                       ),
                     ),
                   ),
@@ -582,8 +650,15 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
           style: const TextStyle(fontSize: 13),
           decoration: InputDecoration(
             hintText: tr.get('search_store_names'),
-            hintStyle: TextStyle(fontSize: 13, color: isDark ? Colors.white38 : Colors.black38),
-            prefixIcon: const Icon(Icons.search, size: 18, color: Color(0xFF10B981)),
+            hintStyle: TextStyle(
+              fontSize: 13,
+              color: isDark ? Colors.white38 : Colors.black38,
+            ),
+            prefixIcon: const Icon(
+              Icons.search,
+              size: 18,
+              color: Color(0xFF10B981),
+            ),
             suffixIcon: _searchQuery.isNotEmpty
                 ? IconButton(
                     icon: const Icon(Icons.close, size: 16),
@@ -596,19 +671,31 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
                   )
                 : null,
             filled: true,
-            fillColor: isDark ? const Color(0xFF0F172A).withValues(alpha: 0.6) : const Color(0xFFF8FAFC),
-            contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+            fillColor: isDark
+                ? const Color(0xFF0F172A).withValues(alpha: 0.6)
+                : const Color(0xFFF8FAFC),
+            contentPadding: const EdgeInsets.symmetric(
+              vertical: 10,
+              horizontal: 12,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: isDark ? Colors.white12 : const Color(0xFFE2E8F0)),
+              borderSide: BorderSide(
+                color: isDark ? Colors.white12 : const Color(0xFFE2E8F0),
+              ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: isDark ? Colors.white12 : const Color(0xFFE2E8F0)),
+              borderSide: BorderSide(
+                color: isDark ? Colors.white12 : const Color(0xFFE2E8F0),
+              ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFF10B981), width: 1.5),
+              borderSide: const BorderSide(
+                color: Color(0xFF10B981),
+                width: 1.5,
+              ),
             ),
           ),
         ),
@@ -628,9 +715,13 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF0F172A).withValues(alpha: 0.6) : const Color(0xFFF8FAFC),
+            color: isDark
+                ? const Color(0xFF0F172A).withValues(alpha: 0.6)
+                : const Color(0xFFF8FAFC),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: isDark ? Colors.white12 : const Color(0xFFE2E8F0)),
+            border: Border.all(
+              color: isDark ? Colors.white12 : const Color(0xFFE2E8F0),
+            ),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<int?>(
@@ -645,22 +736,32 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
                     tr.get('all_cities'),
                     style: TextStyle(
                       fontSize: 13,
-                      fontWeight: _selectedCityId == null ? FontWeight.bold : FontWeight.normal,
-                      color: _selectedCityId == null ? const Color(0xFF10B981) : null,
+                      fontWeight: _selectedCityId == null
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                      color: _selectedCityId == null
+                          ? const Color(0xFF10B981)
+                          : null,
                     ),
                   ),
                 ),
-                ...cities.map((city) => DropdownMenuItem<int?>(
-                      value: city.id,
-                      child: Text(
-                        isRtl ? city.nameAr : city.nameEn,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: _selectedCityId == city.id ? FontWeight.bold : FontWeight.normal,
-                          color: _selectedCityId == city.id ? const Color(0xFF10B981) : null,
-                        ),
+                ...cities.map(
+                  (city) => DropdownMenuItem<int?>(
+                    value: city.id,
+                    child: Text(
+                      isRtl ? city.nameAr : city.nameEn,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: _selectedCityId == city.id
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                        color: _selectedCityId == city.id
+                            ? const Color(0xFF10B981)
+                            : null,
                       ),
-                    )),
+                    ),
+                  ),
+                ),
               ],
               onChanged: (val) {
                 updateState(() {
@@ -686,9 +787,13 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF0F172A).withValues(alpha: 0.6) : const Color(0xFFF8FAFC),
+            color: isDark
+                ? const Color(0xFF0F172A).withValues(alpha: 0.6)
+                : const Color(0xFFF8FAFC),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: isDark ? Colors.white12 : const Color(0xFFE2E8F0)),
+            border: Border.all(
+              color: isDark ? Colors.white12 : const Color(0xFFE2E8F0),
+            ),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<int?>(
@@ -703,22 +808,32 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
                     tr.get('all_categories'),
                     style: TextStyle(
                       fontSize: 13,
-                      fontWeight: _selectedCategoryId == null ? FontWeight.bold : FontWeight.normal,
-                      color: _selectedCategoryId == null ? const Color(0xFF10B981) : null,
+                      fontWeight: _selectedCategoryId == null
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                      color: _selectedCategoryId == null
+                          ? const Color(0xFF10B981)
+                          : null,
                     ),
                   ),
                 ),
-                ...categories.map((cat) => DropdownMenuItem<int?>(
-                      value: cat.id,
-                      child: Text(
-                        isRtl ? cat.nameAr : cat.nameEn,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: _selectedCategoryId == cat.id ? FontWeight.bold : FontWeight.normal,
-                          color: _selectedCategoryId == cat.id ? const Color(0xFF10B981) : null,
-                        ),
+                ...categories.map(
+                  (cat) => DropdownMenuItem<int?>(
+                    value: cat.id,
+                    child: Text(
+                      isRtl ? cat.nameAr : cat.nameEn,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: _selectedCategoryId == cat.id
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                        color: _selectedCategoryId == cat.id
+                            ? const Color(0xFF10B981)
+                            : null,
                       ),
-                    )),
+                    ),
+                  ),
+                ),
               ],
               onChanged: (val) {
                 updateState(() {
@@ -765,7 +880,10 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
         const SizedBox(height: 18),
 
         // 4. Toggle Checkboxes Divider
-        Divider(color: isDark ? Colors.white12 : const Color(0xFFE2E8F0), height: 1),
+        Divider(
+          color: isDark ? Colors.white12 : const Color(0xFFE2E8F0),
+          height: 1,
+        ),
         const SizedBox(height: 14),
 
         // Followed Stores Checkbox
@@ -791,7 +909,9 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
                   child: Checkbox(
                     value: _onlyFollowed,
                     activeColor: const Color(0xFF10B981),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4),
+                    ),
                     onChanged: (val) {
                       final isLoggedIn = ref.read(authProvider).isLoggedIn;
                       if (!isLoggedIn && (val ?? false)) {
@@ -811,7 +931,9 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: _onlyFollowed ? const Color(0xFF10B981) : (isDark ? Colors.white70 : const Color(0xFF334155)),
+                      color: _onlyFollowed
+                          ? const Color(0xFF10B981)
+                          : (isDark ? Colors.white70 : const Color(0xFF334155)),
                     ),
                   ),
                 ),
@@ -839,7 +961,9 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
                   child: Checkbox(
                     value: _onlyVerified,
                     activeColor: const Color(0xFF10B981),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4),
+                    ),
                     onChanged: (val) {
                       updateState(() {
                         _onlyVerified = val ?? false;
@@ -854,7 +978,9 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: _onlyVerified ? const Color(0xFF10B981) : (isDark ? Colors.white70 : const Color(0xFF334155)),
+                      color: _onlyVerified
+                          ? const Color(0xFF10B981)
+                          : (isDark ? Colors.white70 : const Color(0xFF334155)),
                     ),
                   ),
                 ),
@@ -881,7 +1007,9 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
         decoration: BoxDecoration(
           color: isActive
               ? const Color(0xFF10B981)
-              : (isDark ? const Color(0xFF0F172A).withValues(alpha: 0.6) : const Color(0xFFF1F5F9)),
+              : (isDark
+                    ? const Color(0xFF0F172A).withValues(alpha: 0.6)
+                    : const Color(0xFFF1F5F9)),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isActive
@@ -894,7 +1022,9 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
           style: TextStyle(
             fontSize: 11.5,
             fontWeight: FontWeight.w600,
-            color: isActive ? Colors.white : (isDark ? Colors.white70 : const Color(0xFF475569)),
+            color: isActive
+                ? Colors.white
+                : (isDark ? Colors.white70 : const Color(0xFF475569)),
           ),
         ),
       ),
@@ -918,7 +1048,9 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? Colors.white12 : const Color(0xFFE2E8F0)),
+        border: Border.all(
+          color: isDark ? Colors.white12 : const Color(0xFFE2E8F0),
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -979,8 +1111,12 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
     required List<City> cities,
     required List<Category> categories,
   }) {
-    final selectedCity = cities.where((c) => c.id == _selectedCityId).firstOrNull;
-    final selectedCat = categories.where((c) => c.id == _selectedCategoryId).firstOrNull;
+    final selectedCity = cities
+        .where((c) => c.id == _selectedCityId)
+        .firstOrNull;
+    final selectedCat = categories
+        .where((c) => c.id == _selectedCategoryId)
+        .firstOrNull;
 
     return Wrap(
       spacing: 8,
@@ -1038,7 +1174,9 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              border: Border.all(color: isDark ? Colors.white24 : const Color(0xFFCBD5E1)),
+              border: Border.all(
+                color: isDark ? Colors.white24 : const Color(0xFFCBD5E1),
+              ),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
@@ -1084,7 +1222,11 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
           const SizedBox(width: 4),
           Text(
             label,
-            style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.w700),
+            style: TextStyle(
+              color: textColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(width: 4),
           InkWell(
@@ -1112,7 +1254,9 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
   }) {
     return GridView.builder(
       shrinkWrap: !isScrollable,
-      physics: isScrollable ? const AlwaysScrollableScrollPhysics() : const NeverScrollableScrollPhysics(),
+      physics: isScrollable
+          ? const AlwaysScrollableScrollPhysics()
+          : const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
@@ -1150,7 +1294,10 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
   }) {
     final storeName = isRtl ? store.nameAr : store.nameEn;
     final categoryName = isRtl
-        ? (store.categoryNameAr ?? store.category?.nameAr ?? store.categoryNameEn ?? '')
+        ? (store.categoryNameAr ??
+              store.category?.nameAr ??
+              store.categoryNameEn ??
+              '')
         : (store.categoryNameEn ?? store.category?.nameEn ?? '');
     final cityName = isRtl
         ? (store.cityNameAr ?? store.city?.nameAr ?? store.cityNameEn ?? '')
@@ -1162,18 +1309,20 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
     return Container(
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: isDark ? Colors.white12 : const Color(0xFFE2E8F0)),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? Colors.white12 : const Color(0xFFE2E8F0),
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 6,
+            blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -1183,53 +1332,73 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
                 // Logo Container
                 GestureDetector(
                   onTap: () => context.go('/stores/${store.id}'),
-                  child: AspectRatio(
-                    aspectRatio: 1.6,
-                    child: Container(
-                      color: isDark ? const Color(0xFF0F172A) : Colors.white,
-                      padding: const EdgeInsets.all(12),
-                      alignment: Alignment.center,
-                      child: store.logoUrl.isNotEmpty
-                          ? CachedNetworkImage(
-                              imageUrl: AppConfig.normalizeImageUrl(store.logoUrl),
-                              fit: BoxFit.contain,
-                              placeholder: (context, url) => const Center(
-                                child: SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF10B981)),
+                  child: Container(
+                    height: logoHeight,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: isDark
+                            ? const [Color(0xFF1E293B), Color(0xFF0F172A)]
+                            : const [Color(0xFFF8FAFC), Colors.white],
+                      ),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    alignment: Alignment.center,
+                    child: store.logoUrl.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: AppConfig.normalizeImageUrl(
+                              store.logoUrl,
+                            ),
+                            fit: BoxFit.contain,
+                            placeholder: (context, url) => const Center(
+                              child: SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Color(0xFF10B981),
                                 ),
                               ),
-                              errorWidget: (context, url, error) => Icon(
-                                Icons.storefront,
-                                size: 36,
-                                color: isDark ? Colors.white30 : Colors.black26,
-                              ),
-                            )
-                          : Icon(
+                            ),
+                            errorWidget: (context, url, error) => Icon(
                               Icons.storefront,
-                              size: 36,
+                              size: 40,
                               color: isDark ? Colors.white30 : Colors.black26,
                             ),
-                    ),
+                          )
+                        : Icon(
+                            Icons.storefront,
+                            size: 40,
+                            color: isDark ? Colors.white30 : Colors.black26,
+                          ),
                   ),
                 ),
 
-                // Floating Verified Badge
+                // Floating Verified Badge (Matching Angular .verified-badge-float)
                 if (isVerified)
                   Positioned(
-                    top: 6,
-                    left: isRtl ? null : 6,
-                    right: isRtl ? 6 : null,
+                    top: 10,
+                    left: isRtl ? null : 10,
+                    right: isRtl ? 10 : null,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF10B981).withValues(alpha: 0.92),
+                        color: const Color(0xFF10B981).withValues(alpha: 0.95),
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 4,
+                            color: const Color(
+                              0xFF10B981,
+                            ).withValues(alpha: 0.3),
+                            blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
                         ],
@@ -1237,14 +1406,19 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.verified, size: 11, color: Colors.white),
-                          const SizedBox(width: 3),
+                          const Icon(
+                            Icons.verified,
+                            size: 13,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 4),
                           Text(
-                            tr.get('verified'),
+                            isRtl ? 'معتمد' : 'VERIFIED',
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w700,
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.3,
                             ),
                           ),
                         ],
@@ -1255,13 +1429,16 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
             ),
 
             // Divider between logo and body
-            Divider(color: isDark ? Colors.white12 : const Color(0xFFE2E8F0), height: 1),
+            Divider(
+              color: isDark ? Colors.white12 : const Color(0xFFE2E8F0),
+              height: 1,
+            ),
 
             // Store Body Panel
             Padding(
-              padding: const EdgeInsets.all(10.0),
+              padding: const EdgeInsets.all(14.0),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // Store Title
@@ -1272,54 +1449,68 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 13.5,
+                        fontSize: 15.5,
                         fontWeight: FontWeight.w800,
                         color: isDark ? Colors.white : const Color(0xFF0F172A),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 3),
 
-                  // Category Subtitle
+                  // Category Subtitle (Green font matching Angular)
                   Text(
                     categoryName.isNotEmpty ? categoryName : '—',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF10B981),
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 10),
 
-                  // Counts row (Followers + City)
+                  // Counts row (Followers + City badges)
                   Wrap(
-                    spacing: 4,
-                    runSpacing: 4,
+                    spacing: 6,
+                    runSpacing: 6,
                     children: [
                       // Followers tag
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF0F172A).withValues(alpha: 0.5) : const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(4),
+                          color: isDark
+                              ? const Color(0xFF0F172A).withValues(alpha: 0.5)
+                              : const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: isDark
+                                ? Colors.white12
+                                : const Color(0xFFE2E8F0),
+                          ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.people, size: 11, color: isDark ? Colors.white60 : const Color(0xFF64748B)),
-                            const SizedBox(width: 3),
-                            Flexible(
-                              child: Text(
-                                '$followersCount ${tr.get('followers')}',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 9.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: isDark ? Colors.white70 : const Color(0xFF475569),
-                                ),
+                            Icon(
+                              Icons.people,
+                              size: 13,
+                              color: isDark
+                                  ? Colors.white60
+                                  : const Color(0xFF64748B),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '$followersCount ${isRtl ? 'متابع' : 'Followers'}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: isDark
+                                    ? Colors.white70
+                                    : const Color(0xFF475569),
                               ),
                             ),
                           ],
@@ -1329,26 +1520,40 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
                       // City tag
                       if (cityName.isNotEmpty)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF0F172A).withValues(alpha: 0.5) : const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(4),
+                            color: isDark
+                                ? const Color(0xFF0F172A).withValues(alpha: 0.5)
+                                : const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: isDark
+                                  ? Colors.white12
+                                  : const Color(0xFFE2E8F0),
+                            ),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.place, size: 11, color: isDark ? Colors.white60 : const Color(0xFF64748B)),
-                              const SizedBox(width: 2),
-                              Flexible(
-                                child: Text(
-                                  cityName,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 9.5,
-                                    fontWeight: FontWeight.w600,
-                                    color: isDark ? Colors.white70 : const Color(0xFF475569),
-                                  ),
+                              Icon(
+                                Icons.place,
+                                size: 13,
+                                color: isDark
+                                    ? Colors.white60
+                                    : const Color(0xFF64748B),
+                              ),
+                              const SizedBox(width: 3),
+                              Text(
+                                cityName,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: isDark
+                                      ? Colors.white70
+                                      : const Color(0xFF475569),
                                 ),
                               ),
                             ],
@@ -1356,7 +1561,7 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
                         ),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
 
                   // Actions Row (Follow Button + Details Chevron)
                   Row(
@@ -1365,46 +1570,70 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
                       Expanded(
                         child: GestureDetector(
                           onTap: () {
-                            final isLoggedIn = ref.read(authProvider).isLoggedIn;
+                            final isLoggedIn = ref
+                                .read(authProvider)
+                                .isLoggedIn;
                             if (!isLoggedIn) {
                               _showAuthRequiredDialog(context, tr, isRtl);
                               return;
                             }
-                            ref.read(storeRepositoryProvider.notifier).toggleFollowStore(store.id);
+                            ref
+                                .read(storeRepositoryProvider.notifier)
+                                .toggleFollowStore(store.id);
                           },
                           child: Container(
-                            height: 32,
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            height: 38,
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
                               color: isFollowed
-                                  ? (isDark ? const Color(0xFF064E3B) : const Color(0xFFECFDF5))
+                                  ? (isDark
+                                        ? const Color(0xFF064E3B)
+                                        : const Color(0xFFECFDF5))
                                   : const Color(0xFF10B981),
                               border: isFollowed
-                                  ? Border.all(color: const Color(0xFF10B981), width: 1.5)
+                                  ? Border.all(
+                                      color: const Color(0xFF10B981),
+                                      width: 1.5,
+                                    )
                                   : null,
                               borderRadius: BorderRadius.circular(20),
+                              boxShadow: !isFollowed
+                                  ? [
+                                      BoxShadow(
+                                        color: const Color(
+                                          0xFF10B981,
+                                        ).withValues(alpha: 0.25),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 3),
+                                      ),
+                                    ]
+                                  : null,
                             ),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(
-                                  isFollowed ? Icons.check_circle : Icons.favorite_border,
-                                  size: 12,
-                                  color: isFollowed ? const Color(0xFF10B981) : Colors.white,
+                                  isFollowed
+                                      ? Icons.check_circle
+                                      : Icons.favorite_border,
+                                  size: 15,
+                                  color: isFollowed
+                                      ? const Color(0xFF10B981)
+                                      : Colors.white,
                                 ),
-                                const SizedBox(width: 3),
-                                Flexible(
-                                  child: Text(
-                                    isFollowed ? tr.get('following') : tr.get('follow'),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 10.5,
-                                      fontWeight: FontWeight.w700,
-                                      color: isFollowed ? const Color(0xFF10B981) : Colors.white,
-                                    ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  isFollowed
+                                      ? (isRtl ? 'تتابعه' : 'Following')
+                                      : (isRtl ? 'متابعة' : 'Follow'),
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: isFollowed
+                                        ? const Color(0xFF10B981)
+                                        : Colors.white,
                                   ),
                                 ),
                               ],
@@ -1412,22 +1641,31 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 8),
 
                       // Chevron Details Button
                       GestureDetector(
                         onTap: () => context.go('/stores/${store.id}'),
                         child: Container(
-                          width: 32,
-                          height: 32,
+                          width: 38,
+                          height: 38,
                           decoration: BoxDecoration(
+                            color: isDark
+                                ? const Color(0xFF1E293B)
+                                : const Color(0xFFF1F5F9),
                             shape: BoxShape.circle,
-                            border: Border.all(color: isDark ? Colors.white24 : const Color(0xFFE2E8F0)),
+                            border: Border.all(
+                              color: isDark
+                                  ? Colors.white24
+                                  : const Color(0xFFE2E8F0),
+                            ),
                           ),
                           child: Icon(
                             isRtl ? Icons.chevron_left : Icons.chevron_right,
-                            size: 16,
-                            color: isDark ? Colors.white70 : const Color(0xFF64748B),
+                            size: 18,
+                            color: isDark
+                                ? Colors.white70
+                                : const Color(0xFF475569),
                           ),
                         ),
                       ),
@@ -1455,7 +1693,9 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? Colors.white12 : const Color(0xFFE2E8F0)),
+        border: Border.all(
+          color: isDark ? Colors.white12 : const Color(0xFFE2E8F0),
+        ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1491,7 +1731,9 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
               foregroundColor: Colors.white,
               elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
+              ),
             ),
             icon: const Icon(Icons.refresh, size: 16),
             label: Text(
@@ -1504,6 +1746,7 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
       ),
     );
   }
+
   void _openMobileFilterDrawer({
     required BuildContext context,
     required AppLocalizations tr,
@@ -1530,38 +1773,64 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
                 height: MediaQuery.of(context).size.height * 0.85,
                 decoration: BoxDecoration(
                   color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                  borderRadius: const BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20)),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(20),
+                    topRight: Radius.circular(20),
+                  ),
                 ),
                 child: Column(
                   children: [
                     // Drawer Header
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 14,
+                      ),
                       decoration: BoxDecoration(
-                        border: Border(bottom: BorderSide(color: isDark ? Colors.white12 : const Color(0xFFE2E8F0))),
+                        border: Border(
+                          bottom: BorderSide(
+                            color: isDark
+                                ? Colors.white12
+                                : const Color(0xFFE2E8F0),
+                          ),
+                        ),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Row(
                             children: [
-                              const Icon(Icons.storefront, color: Color(0xFF10B981), size: 20),
+                              const Icon(
+                                Icons.storefront,
+                                color: Color(0xFF10B981),
+                                size: 20,
+                              ),
                               const SizedBox(width: 8),
                               Text(
                                 tr.get('filter_stores'),
-                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                ),
                               ),
                               if (_activeFiltersCount > 0) ...[
                                 const SizedBox(width: 6),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 7,
+                                    vertical: 1,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: const Color(0xFF10B981),
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Text(
                                     '$_activeFiltersCount',
-                                    style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w900,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -1576,7 +1845,11 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
                                 },
                                 child: Text(
                                   tr.get('reset'),
-                                  style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 12),
+                                  style: const TextStyle(
+                                    color: Colors.grey,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
                                 ),
                               ),
                               IconButton(
@@ -1609,21 +1882,44 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                        border: Border(top: BorderSide(color: isDark ? Colors.white12 : const Color(0xFFE2E8F0))),
+                        color: isDark
+                            ? const Color(0xFF0F172A)
+                            : const Color(0xFFF8FAFC),
+                        border: Border(
+                          top: BorderSide(
+                            color: isDark
+                                ? Colors.white12
+                                : const Color(0xFFE2E8F0),
+                          ),
+                        ),
                       ),
                       child: Row(
                         children: [
                           Expanded(
                             child: OutlinedButton.icon(
                               style: OutlinedButton.styleFrom(
-                                foregroundColor: isDark ? Colors.white70 : const Color(0xFF475569),
-                                side: BorderSide(color: isDark ? Colors.white24 : const Color(0xFFCBD5E1)),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                foregroundColor: isDark
+                                    ? Colors.white70
+                                    : const Color(0xFF475569),
+                                side: BorderSide(
+                                  color: isDark
+                                      ? Colors.white24
+                                      : const Color(0xFFCBD5E1),
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
                               ),
                               icon: const Icon(Icons.restart_alt, size: 16),
-                              label: Text(tr.get('reset'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                              label: Text(
+                                tr.get('reset'),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                               onPressed: () {
                                 _resetFilters();
                                 setModalState(() {});
@@ -1638,13 +1934,20 @@ class _StoreListScreenState extends ConsumerState<StoreListScreen> {
                                 backgroundColor: const Color(0xFF10B981),
                                 foregroundColor: Colors.white,
                                 elevation: 0,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
                               ),
                               onPressed: () => Navigator.of(ctx).pop(),
                               child: Text(
                                 '${tr.get('show_stores')} (${currentFiltered.length})',
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
                               ),
                             ),
                           ),

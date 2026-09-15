@@ -22,37 +22,35 @@ class ProfileScreen extends ConsumerWidget {
         final theme = Theme.of(ctx);
         final isDark = theme.brightness == Brightness.dark;
 
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Directionality(
-              textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
-              child: Container(
-                constraints: BoxConstraints(
-                  maxHeight: MediaQuery.of(context).size.height * 0.75,
+        return Directionality(
+          textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
+          child: Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.75,
+            ),
+            decoration: BoxDecoration(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.15),
+                  blurRadius: 20,
+                  offset: const Offset(0, -4),
                 ),
-                decoration: BoxDecoration(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.15),
-                      blurRadius: 20,
-                      offset: const Offset(0, -4),
-                    ),
-                  ],
-                ),
-                child: Material(
-                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
+              ],
+            ),
+            child: Material(
+              color: isDark ? const Color(0xFF1E293B) : Colors.white,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
                     // Sheet Drag Handle
                     Center(
                       child: Container(
-                        width: 40,
+                        width: 36,
                         height: 4,
                         margin: const EdgeInsets.only(bottom: 16),
                         decoration: BoxDecoration(
@@ -71,15 +69,15 @@ class ProfileScreen extends ConsumerWidget {
                             Container(
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF16A34A).withOpacity(0.12),
+                                color: const Color(0xFF10B981).withOpacity(0.12),
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(Icons.place, color: Color(0xFF16A34A), size: 20),
+                              child: const Icon(Icons.place, color: Color(0xFF10B981), size: 20),
                             ),
                             const SizedBox(width: 10),
                             Text(
                               tr.get('select_city'),
-                              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                              style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),
@@ -112,13 +110,13 @@ class ProfileScreen extends ConsumerWidget {
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
                                 color: cityState.selectedCity == null
-                                    ? const Color(0xFF16A34A).withOpacity(0.15)
+                                    ? const Color(0xFF10B981).withOpacity(0.15)
                                     : (isDark ? Colors.white10 : const Color(0xFFF1F5F9)),
                                 shape: BoxShape.circle,
                               ),
                               child: Icon(
                                 Icons.public,
-                                color: cityState.selectedCity == null ? const Color(0xFF16A34A) : Colors.grey,
+                                color: cityState.selectedCity == null ? const Color(0xFF10B981) : Colors.grey,
                                 size: 18,
                               ),
                             ),
@@ -126,12 +124,12 @@ class ProfileScreen extends ConsumerWidget {
                               isRtl ? 'جميع المدن' : 'All Cities',
                               style: TextStyle(
                                 fontWeight: cityState.selectedCity == null ? FontWeight.bold : FontWeight.w500,
-                                color: cityState.selectedCity == null ? const Color(0xFF16A34A) : null,
+                                color: cityState.selectedCity == null ? const Color(0xFF10B981) : null,
                                 fontSize: 14,
                               ),
                             ),
                             trailing: cityState.selectedCity == null
-                                ? const Icon(Icons.check_circle, color: Color(0xFF16A34A), size: 20)
+                                ? const Icon(Icons.check_circle, color: Color(0xFF10B981), size: 20)
                                 : null,
                             onTap: () {
                               ref.read(cityRepositoryProvider.notifier).selectCity(null);
@@ -150,13 +148,13 @@ class ProfileScreen extends ConsumerWidget {
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
                                   color: isSelected
-                                      ? const Color(0xFF16A34A).withOpacity(0.15)
+                                      ? const Color(0xFF10B981).withOpacity(0.15)
                                       : (isDark ? Colors.white10 : const Color(0xFFF1F5F9)),
                                   shape: BoxShape.circle,
                                 ),
                                 child: Icon(
                                   Icons.location_city,
-                                  color: isSelected ? const Color(0xFF16A34A) : Colors.grey,
+                                  color: isSelected ? const Color(0xFF10B981) : Colors.grey,
                                   size: 18,
                                 ),
                               ),
@@ -164,12 +162,12 @@ class ProfileScreen extends ConsumerWidget {
                                 isRtl ? city.nameAr : city.nameEn,
                                 style: TextStyle(
                                   fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                  color: isSelected ? const Color(0xFF16A34A) : null,
+                                  color: isSelected ? const Color(0xFF10B981) : null,
                                   fontSize: 14,
                                 ),
                               ),
                               trailing: isSelected
-                                  ? const Icon(Icons.check_circle, color: Color(0xFF16A34A), size: 20)
+                                  ? const Icon(Icons.check_circle, color: Color(0xFF10B981), size: 20)
                                   : null,
                               onTap: () {
                                 ref.read(cityRepositoryProvider.notifier).selectCity(city);
@@ -188,8 +186,6 @@ class ProfileScreen extends ConsumerWidget {
         );
       },
     );
-  },
-);
   }
 
   @override
@@ -206,475 +202,462 @@ class ProfileScreen extends ConsumerWidget {
 
     return Directionality(
       textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-              // 1. User Header / Guest Welcome Card (Matching Angular .sheet-header)
-              if (authState.isLoggedIn)
-                Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: isDark ? Colors.white12 : const Color(0xFFE2E8F0)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
-                        blurRadius: 10,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
+      child: Scaffold(
+        backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            child: Container(
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: isDark ? Colors.white12 : const Color(0xFFE2E8F0)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
                   ),
-                  child: Row(
-                    children: [
-                      // Avatar
-                      Container(
-                        width: 52,
-                        height: 52,
-                        decoration: BoxDecoration(
-                          color: authState.isAdminLoggedIn
-                              ? const Color(0xFFF59E0B).withOpacity(0.15)
-                              : const Color(0xFF16A34A).withOpacity(0.12),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Icon(
-                            authState.isAdminLoggedIn ? Icons.security : Icons.account_circle,
-                            color: authState.isAdminLoggedIn ? const Color(0xFFD97706) : const Color(0xFF16A34A),
-                            size: 32,
-                          ),
-                        ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Drag Handle (Matching Angular .sheet-drag-handle)
+                  Center(
+                    child: Container(
+                      width: 36,
+                      height: 4,
+                      margin: const EdgeInsets.only(top: 12, bottom: 8),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white24 : const Color(0xFFCBD5E1),
+                        borderRadius: BorderRadius.circular(2),
                       ),
-                      const SizedBox(width: 14),
+                    ),
+                  ),
 
-                      // User Info
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Row(
+                  // Header (Matching Angular .sheet-header)
+                  if (authState.isLoggedIn)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 8, 18, 14),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: authState.isAdminLoggedIn
+                                  ? const Color(0xFFF59E0B).withOpacity(0.15)
+                                  : const Color(0xFF10B981).withOpacity(0.12),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Center(
+                              child: Icon(
+                                authState.isAdminLoggedIn ? Icons.security : Icons.account_circle,
+                                color: authState.isAdminLoggedIn ? const Color(0xFFD97706) : const Color(0xFF10B981),
+                                size: 28,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Flexible(
-                                  child: Text(
-                                    authState.currentUser?.fullName ?? tr.get('dealspot_customer'),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                                if (authState.isAdminLoggedIn) ...[
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFF59E0B).withOpacity(0.15),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(
-                                      authState.currentAdmin?.role ?? 'ADMIN',
-                                      style: const TextStyle(
-                                        color: Color(0xFFD97706),
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 10.5,
+                                Row(
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        authState.currentUser?.fullName ?? tr.get('dealspot_customer'),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w700,
+                                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                        ),
                                       ),
                                     ),
+                                    if (authState.isAdminLoggedIn) ...[
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFF59E0B).withOpacity(0.15),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          authState.currentAdmin?.role ?? 'ADMIN',
+                                          style: const TextStyle(
+                                            color: Color(0xFFB45309),
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 10,
+                                            letterSpacing: 0.5,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  authState.currentUser?.email ?? '',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: isDark ? Colors.white60 : const Color(0xFF64748B),
                                   ),
-                                ],
+                                ),
                               ],
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              authState.currentUser?.email ?? '',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: isDark ? Colors.white60 : const Color(0xFF64748B),
-                                fontSize: 12.5,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              else
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: isDark ? Colors.white12 : const Color(0xFFE2E8F0)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
-                        blurRadius: 10,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF16A34A).withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.account_circle_outlined, size: 48, color: Color(0xFF16A34A)),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        tr.get('welcome_dealspot'),
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        tr.get('guest_welcome_desc'),
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: isDark ? Colors.white60 : const Color(0xFF64748B),
-                          fontSize: 12.5,
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-
-                      // Guest Quick Action Buttons (Matching Angular .sheet-guest-actions)
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF16A34A),
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 11),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                              ),
-                              icon: const Icon(Icons.login, size: 16),
-                              label: Text(
-                                tr.get('login'),
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
-                              ),
-                              onPressed: () => context.go('/login'),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: isDark ? Colors.white : const Color(0xFF0F172A),
-                                side: BorderSide(color: isDark ? Colors.white24 : const Color(0xFFCBD5E1)),
-                                padding: const EdgeInsets.symmetric(vertical: 11),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                              ),
-                              icon: const Icon(Icons.person_add_outlined, size: 16),
-                              label: Text(
-                                tr.get('register'),
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
-                              ),
-                              onPressed: () => context.go('/register'),
                             ),
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
-
-              const SizedBox(height: 18),
-
-              // 2. Admin Control Panel Highlight (Matching Angular .sheet-group Administration)
-              if (authState.isAdminLoggedIn) ...[
-                _buildSectionHeader(tr.get('administration'), isDark),
-                const SizedBox(height: 6),
-                _buildCardGroup(
-                  isDark: isDark,
-                  children: [
-                    _buildSettingsTile(
-                      icon: Icons.dashboard_rounded,
-                      iconBgColor: const Color(0xFFF59E0B).withOpacity(0.18),
-                      iconColor: const Color(0xFFD97706),
-                      title: tr.get('admin_dashboard_control'),
-                      subtitle: tr.get('admin_dashboard_desc'),
-                      isDark: isDark,
-                      isRtl: isRtl,
-                      onTap: () => context.go('/admin'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-              ],
-
-              // 3. My Activity Group (Matching Angular .sheet-group My Activity)
-              if (authState.isLoggedIn) ...[
-                _buildSectionHeader(tr.get('my_activity'), isDark),
-                const SizedBox(height: 6),
-                _buildCardGroup(
-                  isDark: isDark,
-                  children: [
-                    _buildSettingsTile(
-                      icon: Icons.bookmark_rounded,
-                      iconBgColor: const Color(0xFF16A34A).withOpacity(0.12),
-                      iconColor: const Color(0xFF16A34A),
-                      title: tr.get('saved_deals_offers'),
-                      subtitle: tr.get('saved_deals_desc'),
-                      isDark: isDark,
-                      isRtl: isRtl,
-                      onTap: () => context.go('/saved-offers'),
-                    ),
-                    _buildDivider(isDark),
-                    _buildSettingsTile(
-                      icon: Icons.favorite_rounded,
-                      iconBgColor: Colors.redAccent.withOpacity(0.12),
-                      iconColor: Colors.redAccent,
-                      title: tr.get('followed_stores'),
-                      subtitle: tr.get('followed_stores_desc'),
-                      isDark: isDark,
-                      isRtl: isRtl,
-                      onTap: () => context.go('/followed-stores'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-              ],
-
-              // 4. Preferences & Partner Group (Matching Angular .sheet-group Preferences & Partner)
-              _buildSectionHeader(tr.get('preferences_partner'), isDark),
-              const SizedBox(height: 6),
-              _buildCardGroup(
-                isDark: isDark,
-                children: [
-                  // Selected City
-                  _buildSettingsTile(
-                    icon: Icons.place_rounded,
-                    iconBgColor: const Color(0xFF16A34A).withOpacity(0.12),
-                    iconColor: const Color(0xFF16A34A),
-                    title: tr.get('selected_city'),
-                    trailingWidget: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF16A34A).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(9999),
+                    )
+                  else
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 8, 18, 14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isRtl ? 'مرحباً بك في ديل سبوت' : 'Welcome to DealSpot',
+                            style: TextStyle(
+                              fontSize: 15.5,
+                              fontWeight: FontWeight.w700,
+                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            isRtl ? 'سجل الدخول لحفظ العروض والكتالوجات' : 'Sign in to save favorite deals & manage notifications',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark ? Colors.white60 : const Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
                       ),
-                      child: Text(
-                        selectedCityName,
-                        style: const TextStyle(
-                          color: Color(0xFF16A34A),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
+                    ),
+
+                  Divider(height: 1, thickness: 1, color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
+
+                  // Body (Matching Angular .sheet-body)
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Guest Quick Action Buttons (Matching Angular .sheet-guest-actions)
+                        if (!authState.isLoggedIn) ...[
+                          Row(
+                            children: [
+                              Expanded(
+                                child: SizedBox(
+                                  height: 42,
+                                  child: ElevatedButton.icon(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF10B981),
+                                      foregroundColor: Colors.white,
+                                      elevation: 0,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                                    ),
+                                    icon: const Icon(Icons.login, size: 16),
+                                    label: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        isRtl ? 'تسجيل الدخول' : 'User Sign In',
+                                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                                      ),
+                                    ),
+                                    onPressed: () => context.go('/login'),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: SizedBox(
+                                  height: 42,
+                                  child: OutlinedButton.icon(
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: isDark ? Colors.white : const Color(0xFF0F172A),
+                                      side: BorderSide(color: isDark ? Colors.white24 : const Color(0xFFCBD5E1)),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                                    ),
+                                    icon: const Icon(Icons.person_add, size: 16),
+                                    label: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        isRtl ? 'إنشاء حساب جديد' : 'Create New Account',
+                                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                                      ),
+                                    ),
+                                    onPressed: () => context.go('/register'),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+
+                        // Administration Group (Matching Angular .sheet-group Administration)
+                        if (authState.isAdminLoggedIn) ...[
+                          _buildSectionTitle(isRtl ? 'لوحة الإدارة' : 'ADMINISTRATION', isDark),
+                          const SizedBox(height: 6),
+                          _buildSheetItem(
+                            icon: Icons.dashboard,
+                            iconBg: const Color(0xFFF59E0B).withOpacity(0.18),
+                            iconColor: const Color(0xFFD97706),
+                            title: isRtl ? 'لوحة تحكم المسؤول' : 'Admin Dashboard & Control',
+                            subtitle: isRtl ? 'إدارة العروض، المتاجر، الأقسام والمستخدمين' : 'Manage offers, stores, categories & users',
+                            isDark: isDark,
+                            isRtl: isRtl,
+                            onTap: () => context.go('/admin'),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+
+                        // My Activity Group (Matching Angular .sheet-group My Activity)
+                        if (authState.isLoggedIn) ...[
+                          _buildSectionTitle(isRtl ? 'نشاطي' : 'MY ACTIVITY', isDark),
+                          const SizedBox(height: 6),
+                          _buildSheetItem(
+                            icon: Icons.bookmark,
+                            iconBg: const Color(0xFF10B981).withOpacity(0.12),
+                            iconColor: const Color(0xFF10B981),
+                            title: isRtl ? 'العروض والخصومات المحفوظة' : 'Saved Deals & Offers',
+                            isDark: isDark,
+                            isRtl: isRtl,
+                            onTap: () => context.go('/saved-offers'),
+                          ),
+                          const SizedBox(height: 8),
+                          _buildSheetItem(
+                            icon: Icons.favorite,
+                            iconBg: Colors.redAccent.withOpacity(0.12),
+                            iconColor: Colors.redAccent,
+                            title: isRtl ? 'المتاجر المتابعة' : 'Followed Stores',
+                            isDark: isDark,
+                            isRtl: isRtl,
+                            onTap: () => context.go('/followed-stores'),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+
+                        // Preferences & Partner Tools (Matching Angular .sheet-group Preferences & Partner)
+                        _buildSectionTitle(isRtl ? 'التفضيلات والشراكة' : 'PREFERENCES & PARTNER', isDark),
+                        const SizedBox(height: 6),
+
+                        // Selected City
+                        _buildSheetItem(
+                          icon: Icons.place,
+                          iconBg: const Color(0xFF10B981).withOpacity(0.12),
+                          iconColor: const Color(0xFF10B981),
+                          title: isRtl ? 'المدينة الحالية' : 'Selected City',
+                          badgeText: selectedCityName,
+                          isDark: isDark,
+                          isRtl: isRtl,
+                          onTap: () => _openCityModal(context, ref),
                         ),
-                      ),
-                    ),
-                    isDark: isDark,
-                    isRtl: isRtl,
-                    onTap: () => _openCityModal(context, ref),
-                  ),
-                  _buildDivider(isDark),
+                        const SizedBox(height: 8),
 
-                  // Language Switcher
-                  _buildSettingsTile(
-                    icon: Icons.language_rounded,
-                    iconBgColor: const Color(0xFF3B82F6).withOpacity(0.12),
-                    iconColor: const Color(0xFF3B82F6),
-                    title: tr.get('language_field'),
-                    trailingWidget: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF3B82F6).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(9999),
-                      ),
-                      child: Text(
-                        isRtl ? 'العربية' : 'English',
-                        style: const TextStyle(
-                          color: Color(0xFF2563EB),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
+                        // Language Switcher
+                        _buildSheetItem(
+                          icon: Icons.language,
+                          iconBg: const Color(0xFF3B82F6).withOpacity(0.12),
+                          iconColor: const Color(0xFF3B82F6),
+                          title: isRtl ? 'اللغة / Language' : 'Language / اللغة',
+                          badgeText: isRtl ? 'English' : 'العربية',
+                          trailingIcon: Icons.swap_horiz,
+                          isDark: isDark,
+                          isRtl: isRtl,
+                          onTap: () => ref.read(translationProvider.notifier).toggleLanguage(),
                         ),
-                      ),
-                    ),
-                    customTrailingIcon: Icons.swap_horiz,
-                    isDark: isDark,
-                    isRtl: isRtl,
-                    onTap: () => ref.read(translationProvider.notifier).toggleLanguage(),
-                  ),
-                  _buildDivider(isDark),
+                        const SizedBox(height: 8),
 
-                  // Partner With Us
-                  _buildSettingsTile(
-                    icon: Icons.handshake_rounded,
-                    iconBgColor: const Color(0xFF10B981).withOpacity(0.12),
-                    iconColor: const Color(0xFF10B981),
-                    title: tr.get('partner_with_us_title'),
-                    subtitle: tr.get('partner_with_us_subtitle'),
-                    isDark: isDark,
-                    isRtl: isRtl,
-                    onTap: () => context.go('/partner-with-us'),
-                  ),
+                        // Partner With Us
+                        _buildSheetItem(
+                          icon: Icons.handshake,
+                          iconBg: const Color(0xFF10B981).withOpacity(0.12),
+                          iconColor: const Color(0xFF10B981),
+                          title: isRtl ? 'انضم كشريك (سجل متجرك)' : 'Partner With Us (Register Store)',
+                          isDark: isDark,
+                          isRtl: isRtl,
+                          onTap: () => context.go('/partner-with-us'),
+                        ),
 
-                  // Admin Portal Access (for guest)
-                  if (!authState.isLoggedIn) ...[
-                    _buildDivider(isDark),
-                    _buildSettingsTile(
-                      icon: Icons.admin_panel_settings_rounded,
-                      iconBgColor: const Color(0xFFF59E0B).withOpacity(0.15),
-                      iconColor: const Color(0xFFD97706),
-                      title: tr.get('admin_portal_access'),
-                      subtitle: tr.get('admin_portal_desc'),
-                      isDark: isDark,
-                      isRtl: isRtl,
-                      onTap: () => context.go('/login?admin=true'),
+                        // Admin Portal Access (for guest)
+                        if (!authState.isLoggedIn) ...[
+                          const SizedBox(height: 8),
+                          _buildSheetItem(
+                            icon: Icons.admin_panel_settings,
+                            iconBg: const Color(0xFFF59E0B).withOpacity(0.15),
+                            iconColor: const Color(0xFFD97706),
+                            title: isRtl ? 'بوابة المسؤولين' : 'Admin Portal Access',
+                            isDark: isDark,
+                            isRtl: isRtl,
+                            onTap: () => context.go('/login?admin=true'),
+                          ),
+                        ],
+
+                        // Log Out Button (if logged in)
+                        if (authState.isLoggedIn) ...[
+                          const SizedBox(height: 20),
+                          SizedBox(
+                            height: 44,
+                            child: OutlinedButton.icon(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFFDC2626),
+                                side: const BorderSide(color: Color(0xFFFCA5A5)),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                              icon: const Icon(Icons.logout, size: 18),
+                              label: Text(
+                                isRtl ? 'تسجيل الخروج' : 'Log Out',
+                                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+                              ),
+                              onPressed: () {
+                                ref.read(authProvider.notifier).logout();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(tr.get('logout_success'))),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                  ],
+                  ),
                 ],
               ),
-
-              const SizedBox(height: 22),
-
-              // 5. Logout Action (if logged in)
-              if (authState.isLoggedIn) ...[
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFFEF4444),
-                    side: const BorderSide(color: Color(0xFFFCA5A5)),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-                  ),
-                  icon: const Icon(Icons.logout, size: 18),
-                  label: Text(
-                    tr.get('logout'),
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                  onPressed: () {
-                    ref.read(authProvider.notifier).logout();
-                    context.go('/');
-                  },
-                ),
-                const SizedBox(height: 20),
-              ],
-
-              // App Version footer
-              Center(
-                child: Text(
-                  tr.get('app_version_tag'),
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: isDark ? Colors.white30 : const Color(0xFF94A3B8),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
+            ),
           ),
         ),
-      );
+      ),
+    );
   }
 
-  Widget _buildSectionHeader(String title, bool isDark) {
+  Widget _buildSectionTitle(String title, bool isDark) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       child: Text(
-        title.toUpperCase(),
+        title,
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w800,
-          letterSpacing: 0.05,
-          color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
+          letterSpacing: 0.5,
+          color: isDark ? Colors.white60 : const Color(0xFF64748B),
         ),
       ),
     );
   }
 
-  Widget _buildCardGroup({required bool isDark, required List<Widget> children}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B) : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? Colors.white12 : const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Material(
-          color: Colors.transparent,
-          child: Column(
-            children: children,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDivider(bool isDark) {
-    return Divider(
-      height: 1,
-      thickness: 1,
-      color: isDark ? Colors.white10 : const Color(0xFFF1F5F9),
-    );
-  }
-
-  Widget _buildSettingsTile({
+  Widget _buildSheetItem({
     required IconData icon,
-    required Color iconBgColor,
+    required Color iconBg,
     required Color iconColor,
     required String title,
     String? subtitle,
-    Widget? trailingWidget,
-    IconData? customTrailingIcon,
+    String? badgeText,
+    IconData? trailingIcon,
     required bool isDark,
     required bool isRtl,
     required VoidCallback onTap,
   }) {
-    final trailingIcon = customTrailingIcon ?? (isRtl ? Icons.chevron_left : Icons.chevron_right);
-
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-      leading: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: iconBgColor,
-          borderRadius: BorderRadius.circular(9),
-        ),
-        child: Center(
-          child: Icon(icon, color: iconColor, size: 19),
-        ),
-      ),
-      title: Text(
-        title,
-        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5),
-      ),
-      subtitle: subtitle != null
-          ? Text(
-              subtitle,
-              style: TextStyle(
-                fontSize: 11.5,
-                color: isDark ? Colors.white60 : const Color(0xFF64748B),
-              ),
-            )
-          : null,
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (trailingWidget != null) ...[
-            trailingWidget,
-            const SizedBox(width: 4),
-          ],
-          Icon(trailingIcon, size: 18, color: isDark ? Colors.white38 : const Color(0xFF94A3B8)),
-        ],
-      ),
+    return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withOpacity(0.04) : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
+        ),
+        child: Row(
+          children: [
+            // Icon Box
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white.withOpacity(0.06) : Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
+              ),
+              child: Center(
+                child: Icon(icon, color: iconColor, size: 18),
+              ),
+            ),
+            const SizedBox(width: 12),
+
+            // Content
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    ),
+                  ),
+                  if (subtitle != null && subtitle.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDark ? Colors.white60 : const Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+
+            // Optional Badge
+            if (badgeText != null) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white.withOpacity(0.08) : Colors.white,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
+                ),
+                child: Text(
+                  badgeText,
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF10B981),
+                  ),
+                ),
+              ),
+            ],
+
+            const SizedBox(width: 6),
+
+            // Arrow
+            Icon(
+              trailingIcon ?? (isRtl ? Icons.chevron_left : Icons.chevron_right),
+              size: 18,
+              color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
-

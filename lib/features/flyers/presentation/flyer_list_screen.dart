@@ -68,10 +68,6 @@ class _FlyerListScreenState extends ConsumerState<FlyerListScreen> {
     return Directionality(
       textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
-        appBar: AppBar(
-          title: Text(tr.get('flyers'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-          elevation: 0,
-        ),
         body: Column(
           children: [
             // Search & City Filter Bar (Matching Angular .flyer-filters.card)

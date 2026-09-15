@@ -442,56 +442,76 @@ class _OfferListScreenState extends ConsumerState<OfferListScreen> {
       ),
     );
 
-    final hasActiveFilters = _selectedMainCategoryId != null ||
-        _selectedSubCategoryId != null ||
-        _selectedStoreId != null ||
-        _selectedBrandId != null ||
-        _minDiscount > 0 ||
-        _showFlashOnly ||
-        _showFeaturedOnly ||
-        _onlySaved ||
-        _searchQuery.isNotEmpty;
+    int activeFilterCount = 0;
+    if (_selectedMainCategoryId != null) activeFilterCount++;
+    if (_selectedSubCategoryId != null) activeFilterCount++;
+    if (_selectedStoreId != null) activeFilterCount++;
+    if (_selectedBrandId != null || (_selectedBrandName != null && _selectedBrandName!.isNotEmpty)) activeFilterCount++;
+    if (_minDiscount > 0) activeFilterCount++;
+    if (_showFlashOnly) activeFilterCount++;
+    if (_showFeaturedOnly) activeFilterCount++;
+    if (_onlySaved) activeFilterCount++;
+    if (_searchQuery.isNotEmpty) activeFilterCount++;
+    final hasActiveFilters = activeFilterCount > 0;
 
     return Directionality(
       textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
-        appBar: AppBar(
-          title: Text(tr.get('offers'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-          actions: [
-            // Filter trigger button with active indicator
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.filter_list),
-                  onPressed: () => _openFilterBottomSheet(context),
-                ),
-                if (hasActiveFilters)
-                  Positioned(
-                    top: 10,
-                    right: isRtl ? null : 10,
-                    left: isRtl ? 10 : null,
-                    child: Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF16A34A),
-                        shape: BoxShape.circle,
+        floatingActionButton: FloatingActionButton(
+          onPressed: () => _openFilterBottomSheet(context),
+          backgroundColor: const Color(0xFF16A34A),
+          elevation: 4,
+          shape: const CircleBorder(),
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.center,
+            children: [
+              const Icon(Icons.tune, color: Colors.white, size: 24),
+              if (hasActiveFilters)
+                Positioned(
+                  top: -8,
+                  right: isRtl ? null : -8,
+                  left: isRtl ? -8 : null,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFEF4444),
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                    child: Center(
+                      child: Text(
+                        '$activeFilterCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          height: 1,
+                        ),
                       ),
                     ),
                   ),
-              ],
-            ),
-          ],
+                ),
+            ],
+          ),
         ),
         body: Column(
           children: [
             // Active filters & results bar
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
-                border: Border(bottom: BorderSide(color: isDark ? Colors.white12 : const Color(0xFFE2E8F0))),
+                color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: isDark ? Colors.white12 : const Color(0xFFE2E8F0)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -503,9 +523,35 @@ class _OfferListScreenState extends ConsumerState<OfferListScreen> {
                         children: [
                           const Icon(Icons.local_offer, color: Color(0xFF16A34A), size: 16),
                           const SizedBox(width: 6),
-                          Text(
-                            '${tr.get('found')} ${offers.length} ${tr.get('promotional_offers')}',
-                            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+                          Text.rich(
+                            TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: '${tr.get('found')} ',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    color: isDark ? Colors.white70 : const Color(0xFF334155),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: '${offers.length} ',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: tr.get('promotional_offers'),
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    color: isDark ? Colors.white70 : const Color(0xFF334155),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
