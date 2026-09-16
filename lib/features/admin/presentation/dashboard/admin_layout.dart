@@ -32,6 +32,79 @@ class AdminLayout extends ConsumerStatefulWidget {
 
 class _AdminLayoutState extends ConsumerState<AdminLayout> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  DateTime? _lastBackPressTime;
+  final List<String> _adminHistory = [];
+
+  void _recordHistory(String location) {
+    if (_adminHistory.isEmpty || _adminHistory.last != location) {
+      _adminHistory.add(location);
+      if (_adminHistory.length > 30) {
+        _adminHistory.removeAt(0);
+      }
+    }
+  }
+
+  void _handleBackPress(BuildContext context, String currentLocation) {
+    // 1. If mobile drawer is open, close it
+    if (_scaffoldKey.currentState?.isDrawerOpen == true) {
+      _scaffoldKey.currentState?.closeDrawer();
+      return;
+    }
+
+    // 2. If any modal bottom sheet or dialog can pop in the Navigator
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+      return;
+    }
+
+    // 3. Pop to previous location if present
+    while (_adminHistory.isNotEmpty && _adminHistory.last == currentLocation) {
+      _adminHistory.removeLast();
+    }
+
+    if (_adminHistory.isNotEmpty) {
+      final prev = _adminHistory.removeLast();
+      context.go(prev);
+      return;
+    }
+
+    // 4. Hierarchical fallback in admin
+    if (currentLocation != '/admin') {
+      context.go('/admin');
+      return;
+    }
+
+    // 5. On admin root '/admin': double back or go to public app
+    final now = DateTime.now();
+    if (_lastBackPressTime == null || now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+      _lastBackPressTime = now;
+      final isAr = ref.read(translationProvider) == AppLanguage.ar;
+      ScaffoldMessenger.of(context).removeCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.info_outline, color: Colors.white, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  isAr ? 'اضغط مرة أخرى للعودة إلى التطبيق الرئيسي' : 'Press back again to return to main store',
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFF334155),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    } else {
+      context.go('/');
+    }
+  }
 
   // Menu items matching Angular AdminLayoutComponent
   static const List<AdminMenuItem> _allMenuItems = [
@@ -63,6 +136,8 @@ class _AdminLayoutState extends ConsumerState<AdminLayout> {
     try {
       location = GoRouterState.of(context).matchedLocation;
     } catch (_) {}
+    _recordHistory(location);
+
     final authState = ref.watch(authProvider);
     final adminUser = authState.currentAdmin;
     final role = (adminUser?.role ?? 'SUPER_ADMIN').toUpperCase();
@@ -97,19 +172,25 @@ class _AdminLayoutState extends ConsumerState<AdminLayout> {
       isDesktop: isDesktop,
     );
 
-    return Directionality(
-      textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
-      child: Scaffold(
-        key: _scaffoldKey,
-        backgroundColor: isDark ? const Color(0xFF0B1120) : const Color(0xFFF8FAFC),
-        // Drawer is available on mobile/tablet screens
-        drawer: isDesktop
-            ? null
-            : Drawer(
-                backgroundColor: const Color(0xFF0F172A),
-                child: SafeArea(child: sidebarWidget),
-              ),
-        body: isDesktop
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _handleBackPress(context, location);
+      },
+      child: Directionality(
+        textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
+        child: Scaffold(
+          key: _scaffoldKey,
+          backgroundColor: isDark ? const Color(0xFF0B1120) : const Color(0xFFF8FAFC),
+          // Drawer is available on mobile/tablet screens
+          drawer: isDesktop
+              ? null
+              : Drawer(
+                  backgroundColor: const Color(0xFF0F172A),
+                  child: SafeArea(child: sidebarWidget),
+                ),
+          body: isDesktop
             ? Row(
                 children: [
                   // Fixed Desktop Sidebar (260px wide, matching Angular)
@@ -153,6 +234,7 @@ class _AdminLayoutState extends ConsumerState<AdminLayout> {
                   ],
                 ),
               ),
+        ),
       ),
     );
   }

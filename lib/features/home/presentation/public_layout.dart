@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/services/auth_repository.dart';
@@ -18,6 +19,103 @@ class PublicLayout extends ConsumerStatefulWidget {
 
 class _PublicLayoutState extends ConsumerState<PublicLayout> {
   final TextEditingController _searchController = TextEditingController();
+  DateTime? _lastBackPressTime;
+  final List<String> _historyStack = [];
+
+  void _recordHistory(String location) {
+    if (_historyStack.isEmpty || _historyStack.last != location) {
+      _historyStack.add(location);
+      if (_historyStack.length > 30) {
+        _historyStack.removeAt(0);
+      }
+    }
+  }
+
+  void _handleBackPress(BuildContext context, String currentLocation) {
+    // 1. If any modal bottom sheet, dialog, or overlay can pop in the Navigator
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+      return;
+    }
+
+    // 2. Remove all trailing entries matching currentLocation
+    while (_historyStack.isNotEmpty && _historyStack.last == currentLocation) {
+      _historyStack.removeLast();
+    }
+
+    // 3. Pop to previous location if present
+    if (_historyStack.isNotEmpty) {
+      final previousLocation = _historyStack.removeLast();
+      context.go(previousLocation);
+      return;
+    }
+
+    // 4. Hierarchical fallback if history is exhausted
+    if (currentLocation != '/') {
+      if (currentLocation.startsWith('/offers/')) {
+        context.go('/offers');
+      } else if (currentLocation.startsWith('/products/')) {
+        context.go('/offers');
+      } else if (currentLocation.startsWith('/stores/') && currentLocation.contains('/branches')) {
+        final parts = currentLocation.split('/');
+        final storeId = parts.length > 2 ? parts[2] : '';
+        if (storeId.isNotEmpty) {
+          context.go('/stores/$storeId');
+        } else {
+          context.go('/stores');
+        }
+      } else if (currentLocation.startsWith('/stores/')) {
+        context.go('/stores');
+      } else if (currentLocation.startsWith('/flyers/')) {
+        context.go('/flyers');
+      } else if (currentLocation.startsWith('/categories/')) {
+        context.go('/offers');
+      } else if (currentLocation == '/saved-offers' ||
+                 currentLocation == '/followed-stores' ||
+                 currentLocation == '/notifications' ||
+                 currentLocation == '/partner-with-us') {
+        context.go('/profile');
+      } else if (currentLocation == '/login' ||
+                 currentLocation == '/register' ||
+                 currentLocation == '/admin/login') {
+        context.go('/');
+      } else {
+        context.go('/');
+      }
+      return;
+    }
+
+    // 5. User is at Home ('/'): double back to exit cleanly
+    final now = DateTime.now();
+    if (_lastBackPressTime == null || now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+      _lastBackPressTime = now;
+      final isAr = ref.read(translationProvider) == AppLanguage.ar;
+      ScaffoldMessenger.of(context).removeCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.info_outline, color: Colors.white, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  isAr ? 'اضغط مرة أخرى للخروج من التطبيق' : 'Press back again to exit',
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFF334155),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    } else {
+      SystemNavigator.pop();
+    }
+  }
 
   int _calculateSelectedIndex(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
@@ -248,6 +346,8 @@ class _PublicLayoutState extends ConsumerState<PublicLayout> {
 
     final selectedIndex = _calculateSelectedIndex(context);
     final location = GoRouterState.of(context).matchedLocation;
+    _recordHistory(location);
+
     final isDetailRoute = location.contains(RegExp(r'/(offers|stores|flyers|products)/\d+')) ||
         location.startsWith('/categories/') ||
         location.endsWith('/branches') ||
@@ -258,36 +358,28 @@ class _PublicLayoutState extends ConsumerState<PublicLayout> {
         location.startsWith('/saved-offers') ||
         location.startsWith('/followed-stores') ||
         location.startsWith('/notifications');
-    final canPop = context.canPop();
 
-    return Directionality(
-      textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
-      child: Scaffold(
-        appBar: AppBar(
-          elevation: 0,
-          backgroundColor: isDark ? const Color(0xFF131C2E) : Colors.white,
-          surfaceTintColor: Colors.transparent,
-          titleSpacing: isDetailRoute ? 0 : 12,
-          leading: isDetailRoute
-              ? IconButton(
-                  icon: Icon(isRtl ? Icons.arrow_forward : Icons.arrow_back),
-                  onPressed: () {
-                    if (canPop) {
-                      context.pop();
-                    } else if (location.startsWith('/login') ||
-                        location.startsWith('/register') ||
-                        location.startsWith('/admin/login') ||
-                        location.startsWith('/partner-with-us') ||
-                        location.startsWith('/saved-offers') ||
-                        location.startsWith('/followed-stores')) {
-                      context.go('/profile');
-                    } else {
-                      context.go('/');
-                    }
-                  },
-                )
-              : null,
-          title: Row(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _handleBackPress(context, location);
+      },
+      child: Directionality(
+        textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
+        child: Scaffold(
+          appBar: AppBar(
+            elevation: 0,
+            backgroundColor: isDark ? const Color(0xFF131C2E) : Colors.white,
+            surfaceTintColor: Colors.transparent,
+            titleSpacing: isDetailRoute ? 0 : 12,
+            leading: isDetailRoute
+                ? IconButton(
+                    icon: Icon(isRtl ? Icons.arrow_forward : Icons.arrow_back),
+                    onPressed: () => _handleBackPress(context, location),
+                  )
+                : null,
+            title: Row(
             children: [
               // Logo Area (Matching Angular .logo-area)
               InkWell(
@@ -514,7 +606,8 @@ class _PublicLayoutState extends ConsumerState<PublicLayout> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
 

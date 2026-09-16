@@ -51,38 +51,30 @@ void main() {
       ),
     );
 
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 500));
 
     // 1. Welcome Section Header (.dash-welcome)
     expect(find.text('Welcome, Tariq Al-Ghamdi'), findsOneWidget);
     expect(find.text('Store Manager'), findsOneWidget);
     expect(
-      find.text('Control panel and quick management center for catalogs, retail partners, promotions, and system operations.'),
+      find.text('Manage your store catalog, published weekly flyers, discount deals, branch locations, and customer promotions.'),
       findsOneWidget,
     );
 
-    // 2. Main Management Modules Grid (.modules-section)
-    expect(find.text('System Modules & Catalogs'), findsOneWidget);
-    expect(find.text('Retail Stores'), findsOneWidget);
-    expect(find.text('Partner Brands'), findsOneWidget);
-    expect(find.text('Product Catalog'), findsOneWidget);
-    expect(find.text('Promotions & Deals'), findsOneWidget);
-    expect(find.text('Brochures & Flyers'), findsOneWidget);
-    expect(find.text('Promo Coupons'), findsOneWidget);
-    expect(find.text('Partner Requests'), findsOneWidget);
-    expect(find.text('Broadcast Alerts'), findsOneWidget);
-    expect(find.text('Cities & Locations'), findsOneWidget);
-    expect(find.text('Departments & Categories'), findsOneWidget);
-    expect(find.text('Staff & Admins'), findsOneWidget);
-    expect(find.text('Audit & History Logs'), findsOneWidget);
+    // 2. Main Store Management Tools Section (.modules-section)
+    expect(find.text('Store Management Tools'), findsOneWidget);
+    expect(find.text('My Store Branches'), findsOneWidget);
+    expect(find.text('My Offers & Discounts'), findsOneWidget);
+    expect(find.text('My Weekly Flyers & Brochures'), findsOneWidget);
+    expect(find.text('Product Items & Catalog'), findsOneWidget);
+    expect(find.text('My Promo Coupons'), findsOneWidget);
 
     // 3. Fast Creation Actions Bar (.quick-creation-panel)
-    expect(find.text('Quick Actions'), findsOneWidget);
+    expect(find.text('Store Quick Actions'), findsOneWidget);
     expect(find.text('Add New Offer'), findsOneWidget);
     expect(find.text('Upload New Flyer'), findsOneWidget);
-    expect(find.text('Add New Product'), findsOneWidget);
+    expect(find.text('Manage Branches'), findsOneWidget);
     expect(find.text('Create Coupon'), findsOneWidget);
-    expect(find.text('Broadcast Notification'), findsOneWidget);
   });
 
   testWidgets('AdminDashboardScreen renders Super Admin dashboard matching Angular', (tester) async {
@@ -102,10 +94,12 @@ void main() {
       ),
     );
 
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.text('Welcome, System Administrator'), findsOneWidget);
     expect(find.text('Super Administrator'), findsOneWidget);
+    expect(find.text('System Modules & Catalogs'), findsOneWidget);
+    expect(find.text('Quick Actions'), findsOneWidget);
   });
 
   testWidgets('AdminDashboardScreen renders cleanly on mobile screen width', (tester) async {
@@ -125,11 +119,11 @@ void main() {
       ),
     );
 
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.text('Welcome, Tariq Al-Ghamdi'), findsOneWidget);
     expect(find.text('Store Manager'), findsOneWidget);
-    expect(find.text('System Modules & Catalogs'), findsOneWidget);
-    expect(find.text('Quick Actions'), findsOneWidget);
+    expect(find.text('Store Management Tools'), findsOneWidget);
+    expect(find.text('Store Quick Actions'), findsOneWidget);
   });
 }

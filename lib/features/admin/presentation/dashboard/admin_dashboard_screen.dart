@@ -940,12 +940,14 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
             children: [
               const Icon(Icons.flash_on_rounded, color: Color(0xFFEAB308), size: 22),
               const SizedBox(width: 8),
-              Text(
-                isRtl ? 'إجراءات المتجر السريعة' : 'Store Quick Actions',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+              Expanded(
+                child: Text(
+                  isRtl ? 'إجراءات المتجر السريعة' : 'Store Quick Actions',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  ),
                 ),
               ),
             ],
