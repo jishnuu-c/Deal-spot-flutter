@@ -59,7 +59,16 @@ class FlyerNotifier extends StateNotifier<FlyerState> {
       );
       if (response.statusCode == 200 && response.data != null) {
         final rawList = response.data as List;
-        final list = rawList.map((e) => Flyer.fromJson(e as Map<String, dynamic>)).toList();
+        final list = <Flyer>[];
+        for (final item in rawList) {
+          if (item is Map<String, dynamic>) {
+            try {
+              list.add(Flyer.fromJson(item));
+            } catch (e) {
+              // Ignore single item error
+            }
+          }
+        }
         state = state.copyWith(flyers: list, isLoading: false);
         return;
       }

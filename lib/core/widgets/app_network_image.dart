@@ -13,6 +13,7 @@ class AppNetworkImage extends StatelessWidget {
   final BorderRadius? borderRadius;
   final Widget? placeholder;
   final Widget? errorWidget;
+  final Alignment alignment;
   final Color? color;
   final IconData defaultFallbackIcon;
   final double fallbackIconSize;
@@ -23,6 +24,7 @@ class AppNetworkImage extends StatelessWidget {
     this.width,
     this.height,
     this.fit = BoxFit.cover,
+    this.alignment = Alignment.center,
     this.borderRadius,
     this.placeholder,
     this.errorWidget,
@@ -52,6 +54,7 @@ class AppNetworkImage extends StatelessWidget {
             width: width,
             height: height,
             fit: fit,
+            alignment: alignment,
             color: color,
             errorBuilder: (_, __, ___) => _buildFallback(),
           );
@@ -73,6 +76,7 @@ class AppNetworkImage extends StatelessWidget {
           width: width,
           height: height,
           fit: fit,
+          alignment: alignment,
           colorFilter: color != null ? ColorFilter.mode(color!, BlendMode.srcIn) : null,
           placeholderBuilder: (_) => _buildPlaceholder(),
           errorBuilder: (_, __, ___) => _buildFallback(),
@@ -90,6 +94,7 @@ class AppNetworkImage extends StatelessWidget {
           width: width,
           height: height,
           fit: fit,
+          alignment: alignment,
           color: color,
           fadeInDuration: const Duration(milliseconds: 100),
           fadeOutDuration: const Duration(milliseconds: 100),

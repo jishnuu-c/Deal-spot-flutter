@@ -255,7 +255,6 @@ class _ProductsCrudScreenState extends ConsumerState<ProductsCrudScreen> {
           onRefresh: () async {
             await Future.wait([
               _loadInitialProducts(),
-              ref.read(productRepositoryProvider.notifier).fetchProducts(),
               ref.read(categoryRepositoryProvider.notifier).fetchCategories(),
               ref.read(brandRepositoryProvider.notifier).fetchBrands(),
             ]);

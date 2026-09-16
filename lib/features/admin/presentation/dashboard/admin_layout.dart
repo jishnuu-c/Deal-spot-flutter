@@ -68,7 +68,7 @@ class _AdminLayoutState extends ConsumerState<AdminLayout> {
     final role = (adminUser?.role ?? 'SUPER_ADMIN').toUpperCase();
     final storeId = adminUser?.storeId;
 
-    final List<AdminMenuItem> menuItems = role == 'STORE_MANAGER'
+    final List<AdminMenuItem> menuItems = authState.isStoreManager
         ? [
             const AdminMenuItem(route: '/admin', labelEn: 'Store Dashboard', labelAr: 'لوحة المتجر', icon: Icons.dashboard_rounded),
             AdminMenuItem(
@@ -484,6 +484,12 @@ class _AdminTopBarState extends ConsumerState<_AdminTopBar> {
       child: OverlayPortal(
         controller: _notifOverlayController,
         overlayChildBuilder: (context) {
+          final mediaQuery = MediaQuery.of(context);
+          final screenWidth = mediaQuery.size.width;
+          final isSmallPhoneLocal = screenWidth <= 576;
+          final isMobile = screenWidth < 768 || !widget.isDesktop;
+          final topbarH = widget.isDesktop ? 70.0 : (isSmallPhoneLocal ? 58.0 : 64.0);
+
           return Stack(
             children: [
               // Backdrop click-to-close overlay (.notif-menu-backdrop)
@@ -495,14 +501,27 @@ class _AdminTopBarState extends ConsumerState<_AdminTopBar> {
                 ),
               ),
               // Floating Notification Popover Dropdown (.notif-dropdown-popover)
-              CompositedTransformFollower(
-                link: _notifLayerLink,
-                showWhenUnlinked: false,
-                targetAnchor: widget.isRtl ? Alignment.bottomLeft : Alignment.bottomRight,
-                followerAnchor: widget.isRtl ? Alignment.topLeft : Alignment.topRight,
-                offset: const Offset(0, 10),
-                child: _buildNotificationDropdown(notifState),
-              ),
+              if (isMobile)
+                Positioned(
+                  top: mediaQuery.padding.top + topbarH + 6,
+                  left: 10,
+                  right: 10,
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 420),
+                      child: _buildNotificationDropdown(notifState, isMobile: true),
+                    ),
+                  ),
+                )
+              else
+                CompositedTransformFollower(
+                  link: _notifLayerLink,
+                  showWhenUnlinked: false,
+                  targetAnchor: widget.isRtl ? Alignment.bottomLeft : Alignment.bottomRight,
+                  followerAnchor: widget.isRtl ? Alignment.topLeft : Alignment.topRight,
+                  offset: const Offset(0, 10),
+                  child: _buildNotificationDropdown(notifState, isMobile: false),
+                ),
             ],
           );
         },
@@ -574,7 +593,7 @@ class _AdminTopBarState extends ConsumerState<_AdminTopBar> {
   }
 
   // Notification Dropdown Popover Card (.notif-dropdown-popover)
-  Widget _buildNotificationDropdown(NotificationState notifState) {
+  Widget _buildNotificationDropdown(NotificationState notifState, {bool isMobile = false}) {
     final recent = notifState.notifications.take(5).toList();
     final unreadCount = notifState.unreadCount;
 
@@ -583,9 +602,8 @@ class _AdminTopBarState extends ConsumerState<_AdminTopBar> {
       child: Material(
         type: MaterialType.transparency,
         child: Container(
-          width: 360,
-          constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width * 0.92,
+          width: isMobile ? double.infinity : 360,
+          constraints: const BoxConstraints(
             maxHeight: 480,
           ),
           decoration: BoxDecoration(

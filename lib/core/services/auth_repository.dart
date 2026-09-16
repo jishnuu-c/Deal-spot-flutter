@@ -19,6 +19,12 @@ class AuthState {
 
   bool get isLoggedIn => currentUser != null;
   bool get isAdminLoggedIn => currentAdmin != null;
+  bool get isStoreManager =>
+      currentAdmin != null &&
+      (currentAdmin!.role.toUpperCase() == 'STORE_MANAGER' || currentAdmin!.storeId != null);
+  bool get isSuperAdmin =>
+      currentAdmin != null &&
+      currentAdmin!.role.toUpperCase() == 'SUPER_ADMIN';
   String? get error => errorMessage;
 
   AuthState copyWith({
@@ -86,6 +92,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
       if (response.statusCode == 200 && response.data != null) {
         final data = response.data as Map<String, dynamic>;
         final token = data['token'] as String? ?? '';
+        final role = (data['role'] as String? ?? '').toUpperCase();
+        final storeId = (data['storeId'] as num?)?.toInt() ??
+            (data['store_id'] as num?)?.toInt() ??
+            int.tryParse(data['storeId']?.toString() ?? '') ??
+            int.tryParse(data['store_id']?.toString() ?? '');
+
         final user = User(
           id: (data['id'] as num?)?.toInt() ?? 101,
           cityId: (data['cityId'] as num?)?.toInt() ?? 1,
@@ -98,12 +110,29 @@ class AuthNotifier extends StateNotifier<AuthState> {
           isActive: 1,
         );
 
-        await _storageService.saveToken(token);
-        await _storageService.saveUser(jsonEncode(user.toJson()));
+        AdminUser? adminUser;
+        if (role == 'SUPER_ADMIN' || role == 'STORE_MANAGER' || role == 'ADMIN' || storeId != null) {
+          adminUser = AdminUser(
+            id: user.id,
+            fullName: user.fullName,
+            email: user.email,
+            role: role.isNotEmpty ? role : (storeId != null ? 'STORE_MANAGER' : 'SUPER_ADMIN'),
+            isActive: 1,
+            lastLoginAt: DateTime.now().toIso8601String(),
+            storeId: storeId,
+          );
+        }
+
+        _storageService.saveUserSession(
+          token: token,
+          userJson: jsonEncode(user.toJson()),
+          adminJson: adminUser != null ? jsonEncode(adminUser.toJson()) : null,
+        );
 
         state = state.copyWith(
           isLoading: false,
           currentUser: user,
+          currentAdmin: adminUser ?? state.currentAdmin,
         );
         return true;
       } else {
@@ -156,8 +185,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
           isActive: 1,
         );
 
-        await _storageService.saveToken(token);
-        await _storageService.saveUser(jsonEncode(user.toJson()));
+        _storageService.saveUserSession(
+          token: token,
+          userJson: jsonEncode(user.toJson()),
+        );
 
         state = state.copyWith(
           isLoading: false,
@@ -221,10 +252,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
           isActive: 1,
         );
 
-        await _storageService.saveAdminToken(token);
-        await _storageService.saveAdminUser(jsonEncode(admin.toJson()));
-        await _storageService.saveToken(token);
-        await _storageService.saveUser(jsonEncode(user.toJson()));
+        _storageService.saveAdminSession(
+          token: token,
+          adminJson: jsonEncode(admin.toJson()),
+          userJson: jsonEncode(user.toJson()),
+        );
 
         state = state.copyWith(
           isLoading: false,
@@ -248,11 +280,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  // Logout
+  // Logout (Instantaneous state reset with async storage clearance)
   Future<void> logout() async {
-    state = state.copyWith(isLoading: true);
+    state = const AuthState();
     await _storageService.clearAuthData();
-    state = const AuthState(); // Reset state
   }
 
   // Update Profile

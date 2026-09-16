@@ -55,16 +55,20 @@ class _CouponsCrudScreenState extends ConsumerState<CouponsCrudScreen> {
     super.dispose();
   }
 
-  Future<void> _loadData() async {
+  Future<void> _loadData({bool isRefresh = false}) async {
     if (!mounted) return;
     setState(() => _isLoading = true);
     try {
-      await Future.wait([
+      final futures = <Future>[
         ref.read(couponRepositoryProvider.notifier).fetchCoupons(),
-        ref.read(storeRepositoryProvider.notifier).fetchStores(),
-        ref.read(offerRepositoryProvider.notifier).fetchOffers(includeExpired: true),
-        ref.read(productRepositoryProvider.notifier).fetchProducts(),
-      ]);
+      ];
+      if (ref.read(storeRepositoryProvider).stores.isEmpty) {
+        futures.add(ref.read(storeRepositoryProvider.notifier).fetchStores());
+      }
+      if (ref.read(offerRepositoryProvider).offers.isEmpty) {
+        futures.add(ref.read(offerRepositoryProvider.notifier).fetchOffers(includeExpired: true));
+      }
+      await Future.wait(futures);
     } catch (_) {}
     if (mounted) {
       setState(() => _isLoading = false);

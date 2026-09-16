@@ -152,6 +152,9 @@ void main() {
 
     await tester.pumpAndSettle();
 
+    // Verify home search bar is visible on home
+    expect(find.text('Search offers, stores, brands...'), findsOneWidget);
+
     // Tap Stores destination
     final storesIcon = find.byIcon(Icons.storefront_outlined);
     expect(storesIcon, findsOneWidget);
@@ -163,4 +166,42 @@ void main() {
     expect(find.byType(StoreListScreen), findsOneWidget);
     expect(find.text('Lulu Hypermarket'), findsOneWidget);
   });
+
+  testWidgets('Register route /register highlights Profile tab with persistent header', (WidgetTester tester) async {
+    final container = ProviderContainer(
+      overrides: [
+        cityRepositoryProvider.overrideWith((ref) => MockCityNotifier()),
+        categoryRepositoryProvider.overrideWith((ref) => MockCategoryNotifier()),
+        storeRepositoryProvider.overrideWith((ref) => MockStoreNotifier()),
+        offerRepositoryProvider.overrideWith((ref) => MockOfferNotifier()),
+        flyerRepositoryProvider.overrideWith((ref) => MockFlyerNotifier()),
+        brandRepositoryProvider.overrideWith((ref) => MockBrandNotifier()),
+      ],
+    );
+
+    final router = container.read(routerProvider);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(
+          routerConfig: router,
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    // Navigate to register
+    router.go('/register');
+    await tester.pumpAndSettle();
+
+    // Verify Create Your Account is visible
+    expect(find.text('Create Your Account'), findsOneWidget);
+
+    // Verify NavigationBar has selectedIndex == 4 (Profile)
+    final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
+    expect(navBar.selectedIndex, 4);
+  });
 }
+

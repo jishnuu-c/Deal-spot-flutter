@@ -110,9 +110,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         );
         if (success) {
           final user = ref.read(authProvider).currentUser;
+          final admin = ref.read(authProvider).currentAdmin;
+          final name = user?.fullName ?? admin?.fullName ?? '';
           _successMessage = isAr
-              ? 'أهلاً بك مجدداً، ${user?.fullName ?? ''}!'
-              : 'Welcome back, ${user?.fullName ?? ''}!';
+              ? (name.isNotEmpty ? 'أهلاً بك مجدداً، $name!' : 'تم تسجيل الدخول بنجاح!')
+              : (name.isNotEmpty ? 'Welcome back, $name!' : 'Login Successful!');
         } else {
           _errorMessage = ref.read(authProvider).error ??
               (isAr ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة' : 'Invalid email or password');
@@ -127,9 +129,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         );
         if (success) {
           final user = ref.read(authProvider).currentUser;
+          final name = user?.fullName ?? '';
           _successMessage = isAr
-              ? 'تم إنشاء الحساب بنجاح! أهلاً بك، ${user?.fullName ?? ''}!'
-              : 'Account created! Welcome, ${user?.fullName ?? ''}!';
+              ? (name.isNotEmpty ? 'تم إنشاء الحساب بنجاح! أهلاً بك، $name!' : 'تم إنشاء الحساب بنجاح!')
+              : (name.isNotEmpty ? 'Account created! Welcome, $name!' : 'Account created successfully!');
         } else {
           _errorMessage = ref.read(authProvider).error ??
               (isAr
@@ -142,9 +145,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           _adminPasswordController.text,
         );
         if (success) {
+          final admin = ref.read(authProvider).currentAdmin;
+          final name = admin?.fullName ?? '';
           _successMessage = isAr
-              ? 'تم تسجيل دخول المسؤول بنجاح. جاري التحويل...'
-              : 'Admin authentication successful. Redirecting...';
+              ? (name.isNotEmpty ? 'تم تسجيل الدخول بنجاح! مرحباً $name' : 'تم تسجيل دخول المسؤول بنجاح. جاري التحويل...')
+              : (name.isNotEmpty ? 'Login Successful! Welcome, $name!' : 'Admin authentication successful. Redirecting...');
         } else {
           _errorMessage = ref.read(authProvider).error ??
               (isAr
@@ -158,10 +163,35 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
     if (mounted) {
       setState(() => _submitting = false);
-      if (success) {
-        await Future.delayed(const Duration(milliseconds: 600));
+      if (success && _successMessage != null) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    _successMessage!,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+
+        // Keep message visible for 800ms before navigating (matching Angular setTimeout)
+        await Future.delayed(const Duration(milliseconds: 800));
         if (mounted) {
-          if (_mode == AuthScreenMode.admin) {
+          final authState = ref.read(authProvider);
+          if (_mode == AuthScreenMode.admin || authState.isAdminLoggedIn) {
             final target = (widget.returnUrl.startsWith('/admin')) ? widget.returnUrl : '/admin';
             context.go(target);
           } else {

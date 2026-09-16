@@ -5,6 +5,7 @@ import '../../../core/services/auth_repository.dart';
 import '../../../core/services/city_repository.dart';
 import '../../../core/services/notification_repository.dart';
 import '../../../core/utils/translation_service.dart';
+import '../../search/presentation/search_overlay.dart';
 
 class PublicLayout extends ConsumerStatefulWidget {
   final Widget child;
@@ -21,12 +22,16 @@ class _PublicLayoutState extends ConsumerState<PublicLayout> {
   int _calculateSelectedIndex(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
     if (location.startsWith('/offers')) return 1;
-    if (location.startsWith('/flyers')) return 2;
-    if (location.startsWith('/stores')) return 3;
+    if (location.startsWith('/stores')) return 2;
+    if (location.startsWith('/flyers')) return 3;
     if (location.startsWith('/profile') ||
         location.startsWith('/saved-offers') ||
         location.startsWith('/followed-stores') ||
-        location.startsWith('/partner-with-us')) return 4;
+        location.startsWith('/partner-with-us') ||
+        location.startsWith('/login') ||
+        location.startsWith('/register') ||
+        location.startsWith('/admin/login') ||
+        location.startsWith('/notifications')) return 4;
     return 0; // Default Home
   }
 
@@ -39,10 +44,10 @@ class _PublicLayoutState extends ConsumerState<PublicLayout> {
         context.go('/offers');
         break;
       case 2:
-        context.go('/flyers');
+        context.go('/stores');
         break;
       case 3:
-        context.go('/stores');
+        context.go('/flyers');
         break;
       case 4:
         context.go('/profile');
@@ -245,7 +250,14 @@ class _PublicLayoutState extends ConsumerState<PublicLayout> {
     final location = GoRouterState.of(context).matchedLocation;
     final isDetailRoute = location.contains(RegExp(r'/(offers|stores|flyers|products)/\d+')) ||
         location.startsWith('/categories/') ||
-        location.endsWith('/branches');
+        location.endsWith('/branches') ||
+        location.startsWith('/login') ||
+        location.startsWith('/register') ||
+        location.startsWith('/admin/login') ||
+        location.startsWith('/partner-with-us') ||
+        location.startsWith('/saved-offers') ||
+        location.startsWith('/followed-stores') ||
+        location.startsWith('/notifications');
     final canPop = context.canPop();
 
     return Directionality(
@@ -262,165 +274,133 @@ class _PublicLayoutState extends ConsumerState<PublicLayout> {
                   onPressed: () {
                     if (canPop) {
                       context.pop();
+                    } else if (location.startsWith('/login') ||
+                        location.startsWith('/register') ||
+                        location.startsWith('/admin/login') ||
+                        location.startsWith('/partner-with-us') ||
+                        location.startsWith('/saved-offers') ||
+                        location.startsWith('/followed-stores')) {
+                      context.go('/profile');
                     } else {
                       context.go('/');
                     }
                   },
                 )
               : null,
-          title: InkWell(
-            onTap: () => context.go('/'),
-            borderRadius: BorderRadius.circular(8),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 30,
-                  height: 30,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF16A34A),
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF16A34A).withOpacity(0.3),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: const Center(
-                    child: Icon(Icons.local_offer, color: Colors.white, size: 15),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        tr.get('app_title'),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 15.5,
-                          letterSpacing: -0.3,
-                          color: Color(0xFF16A34A),
-                          height: 1.1,
-                        ),
-                      ),
-                      Text(
-                        isRtl ? 'المملكة العربية السعودية' : 'Saudi Arabia',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? Colors.white60 : const Color(0xFF64748B),
-                          height: 1.1,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            // City Selector Pill Button (Matching Angular .city-selector)
-            InkWell(
-              onTap: () => _openCityModal(context, ref),
-              borderRadius: BorderRadius.circular(9999),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(9999),
-                  border: Border.all(color: isDark ? Colors.white12 : const Color(0xFFE2E8F0)),
-                ),
+          title: Row(
+            children: [
+              // Logo Area (Matching Angular .logo-area)
+              InkWell(
+                onTap: () => context.go('/'),
+                borderRadius: BorderRadius.circular(8),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.place, color: Color(0xFF16A34A), size: 13),
-                    const SizedBox(width: 2),
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 58),
-                      child: Text(
-                        cityState.selectedCity != null
-                            ? (isRtl ? cityState.selectedCity!.nameAr : cityState.selectedCity!.nameEn)
-                            : (isRtl ? 'جميع المدن' : 'All Cities'),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: isDark ? Colors.white : const Color(0xFF0F172A),
-                        ),
+                    Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF16A34A),
+                        borderRadius: BorderRadius.circular(7),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF16A34A).withOpacity(0.3),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const Center(
+                        child: Icon(Icons.local_offer, color: Colors.white, size: 14),
                       ),
                     ),
-                    const SizedBox(width: 1),
-                    Icon(Icons.keyboard_arrow_down, size: 14, color: isDark ? Colors.white60 : const Color(0xFF64748B)),
+                    const SizedBox(width: 6),
+                    Text(
+                      tr.get('app_title'),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 15,
+                        letterSpacing: -0.3,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      ),
+                    ),
                   ],
                 ),
               ),
-            ),
-            const SizedBox(width: 4),
+              const SizedBox(width: 8),
 
-            // Language Switcher Pill (Matching Angular .lang-toggle)
+              // Single-Row Search Pill Trigger (Matching Angular .search-form & openSearchOverlay())
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    SearchOverlayModal.show(context, initialQuery: _searchController.text);
+                  },
+                  borderRadius: BorderRadius.circular(9999),
+                  child: Container(
+                    height: 36,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(9999),
+                      border: Border.all(
+                        color: isDark ? Colors.white10 : const Color(0xFFE2E8F0),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _searchController.text.isNotEmpty
+                                ? _searchController.text
+                                : (isRtl ? 'ابحث عن العروض، المتاجر...' : 'Search offers, stores, brands...'),
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: _searchController.text.isNotEmpty
+                                  ? (isDark ? Colors.white : const Color(0xFF0F172A))
+                                  : (isDark ? Colors.white38 : const Color(0xFF94A3B8)),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const Icon(Icons.search, color: Color(0xFF64748B), size: 17),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            const SizedBox(width: 2),
+
+            // Language Switcher Circle Button (Matching Angular .lang-toggle)
             InkWell(
               onTap: () {
                 ref.read(translationProvider.notifier).toggleLanguage();
               },
               borderRadius: BorderRadius.circular(9999),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+                width: 34,
+                height: 34,
                 decoration: BoxDecoration(
                   color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(9999),
+                  shape: BoxShape.circle,
                   border: Border.all(color: isDark ? Colors.white12 : const Color(0xFFE2E8F0)),
                 ),
-                child: Text(
-                  isRtl ? 'EN' : 'عربي',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF16A34A),
-                    fontSize: 11,
+                child: Center(
+                  child: Text(
+                    isRtl ? 'EN' : 'AR',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      fontSize: 11,
+                    ),
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 2),
-
-            // Admin Direct Entry (if admin logged in)
-            if (authState.isAdminLoggedIn)
-              IconButton(
-                visualDensity: VisualDensity.compact,
-                padding: const EdgeInsets.all(4),
-                constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
-                icon: const Icon(Icons.admin_panel_settings, color: Color(0xFFF59E0B), size: 19),
-                tooltip: tr.get('admin_panel'),
-                onPressed: () => context.go('/admin'),
-              ),
-
-            // Notifications Bell
-            IconButton(
-              visualDensity: VisualDensity.compact,
-              padding: const EdgeInsets.all(4),
-              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-              icon: Badge(
-                label: unreadCount > 0 ? Text('$unreadCount', style: const TextStyle(fontSize: 9)) : null,
-                isLabelVisible: unreadCount > 0,
-                backgroundColor: Colors.redAccent,
-                child: Icon(
-                  Icons.notifications_none_rounded,
-                  size: 20,
-                  color: isDark ? Colors.white70 : const Color(0xFF334155),
-                ),
-              ),
-              onPressed: () => context.go('/notifications'),
-            ),
-            const SizedBox(width: 4),
+            const SizedBox(width: 8),
           ],
         ),
         body: Column(
@@ -431,51 +411,6 @@ class _PublicLayoutState extends ConsumerState<PublicLayout> {
               thickness: 1,
               color: isDark ? Colors.white12 : const Color(0xFFE2E8F0),
             ),
-
-            // Sticky Search Bar on Home Tab (Matching Angular search-form)
-            if (selectedIndex == 0)
-              Container(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-                color: isDark ? const Color(0xFF131C2E) : Colors.white,
-                child: TextField(
-                  controller: _searchController,
-                  textInputAction: TextInputAction.search,
-                  onSubmitted: (query) {
-                    if (query.trim().isNotEmpty) {
-                      context.go('/offers?search=${Uri.encodeComponent(query.trim())}');
-                    }
-                  },
-                  decoration: InputDecoration(
-                    hintText: isRtl ? 'ابحث عن العروض، المتاجر، الماركات...' : 'Search offers, stores, brands...',
-                    hintStyle: TextStyle(fontSize: 13, color: isDark ? Colors.white38 : const Color(0xFF94A3B8)),
-                    prefixIcon: const Icon(Icons.search, color: Color(0xFF16A34A), size: 20),
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.close, size: 16),
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() {});
-                            },
-                          )
-                        : null,
-                    filled: true,
-                    fillColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(9999),
-                      borderSide: BorderSide(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(9999),
-                      borderSide: BorderSide(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(9999),
-                      borderSide: const BorderSide(color: Color(0xFF16A34A), width: 1.5),
-                    ),
-                  ),
-                ),
-              ),
 
             Expanded(child: widget.child),
           ],
@@ -552,14 +487,14 @@ class _PublicLayoutState extends ConsumerState<PublicLayout> {
                   label: tr.get('offers'),
                 ),
                 NavigationDestination(
-                  icon: const Icon(Icons.auto_stories_outlined),
-                  selectedIcon: const Icon(Icons.auto_stories),
-                  label: tr.get('flyers'),
-                ),
-                NavigationDestination(
                   icon: const Icon(Icons.storefront_outlined),
                   selectedIcon: const Icon(Icons.storefront),
                   label: tr.get('stores'),
+                ),
+                NavigationDestination(
+                  icon: const Icon(Icons.auto_stories_outlined),
+                  selectedIcon: const Icon(Icons.auto_stories),
+                  label: tr.get('flyers'),
                 ),
                 NavigationDestination(
                   icon: Icon(

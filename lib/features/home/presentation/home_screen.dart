@@ -711,7 +711,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // 5. Flyers Slider
   Widget _buildFlyersSlider(List<Flyer> flyers, bool isRtl, bool isDark, AppLocalizations tr) {
     return SizedBox(
-      height: 245,
+      height: 275,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -719,7 +719,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         itemBuilder: (context, index) {
           final flyer = flyers[index];
           return Container(
-            width: 175,
+            width: 185,
             margin: const EdgeInsets.only(right: 14, bottom: 6),
             child: _buildFlyerCard(context, flyer, isRtl, isDark, tr),
           );
@@ -1074,7 +1074,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  // Flyer Card
+  // Flyer Card (Matching Angular .flyer-card)
   Widget _buildFlyerCard(
     BuildContext context,
     Flyer flyer,
@@ -1084,78 +1084,161 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   ) {
     final storeName = isRtl ? (flyer.store?.nameAr ?? '') : (flyer.store?.nameEn ?? '');
     final flyerTitle = isRtl ? flyer.titleAr : flyer.titleEn;
+    final storeLogo = flyer.store?.logoUrl;
 
     return Container(
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: isDark ? Colors.white12 : const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 6,
+            blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         child: InkWell(
           onTap: () => context.go('/flyers/${flyer.id}'),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              AspectRatio(
-                aspectRatio: 1.3,
+              // 1. Cover Image Area with clean container and Pages badge
+              Expanded(
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    AppNetworkImage(
-                      imageUrl: flyer.coverImageUrl,
-                      fit: BoxFit.cover,
-                      defaultFallbackIcon: Icons.menu_book,
+                    Container(
+                      color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                      child: AppNetworkImage(
+                        imageUrl: flyer.coverImageUrl,
+                        fit: BoxFit.cover,
+                        alignment: Alignment.center,
+                        defaultFallbackIcon: Icons.auto_stories,
+                      ),
                     ),
+
+                    // Pages Count Badge
                     Positioned(
-                      bottom: 6,
-                      right: isRtl ? null : 6,
-                      left: isRtl ? 6 : null,
+                      bottom: 8,
+                      right: isRtl ? null : 8,
+                      left: isRtl ? 8 : null,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                         decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.7),
+                          color: const Color(0xFF0F172A).withValues(alpha: 0.8),
                           borderRadius: BorderRadius.circular(6),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.2),
+                              blurRadius: 4,
+                            ),
+                          ],
                         ),
-                        child: Text(
-                          '${flyer.totalPages} ${tr.get('pages')}',
-                          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.auto_stories, color: Colors.white, size: 11),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${flyer.totalPages} ${isRtl ? "صفحات" : "Pages"}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
+
+              // 2. Divider
+              Divider(
+                height: 1,
+                thickness: 1,
+                color: isDark ? Colors.white10 : const Color(0xFFE2E8F0),
+              ),
+
+              // 3. Info Body (Matching Angular .flyer-card-body)
               Padding(
-                padding: const EdgeInsets.all(8.0),
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Store badge row
                     if (storeName.isNotEmpty)
-                      Text(
-                        storeName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? Colors.white60 : Colors.black54,
-                        ),
+                      Row(
+                        children: [
+                          if (storeLogo != null && storeLogo.isNotEmpty) ...[
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: AppNetworkImage(
+                                imageUrl: storeLogo,
+                                width: 14,
+                                height: 14,
+                                fit: BoxFit.cover,
+                                defaultFallbackIcon: Icons.storefront,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                          ],
+                          Expanded(
+                            child: Text(
+                              storeName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.white60 : const Color(0xFF64748B),
+                              ),
+                            ),
+                          ),
+                          if (flyer.store?.isVerified == 1)
+                            const Icon(Icons.verified, color: Color(0xFF3B82F6), size: 12),
+                        ],
                       ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 3),
+
+                    // Flyer Title
                     Text(
                       flyerTitle,
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+
+                    // View Flyer Button (Matching Angular .btn-view-flyer)
+                    Container(
+                      width: double.infinity,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF16A34A),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Center(
+                        child: Text(
+                          isRtl ? 'عرض البروشور' : 'View Flyer',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),

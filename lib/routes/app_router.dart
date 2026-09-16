@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../core/services/auth_repository.dart';
@@ -5,6 +6,7 @@ import '../core/services/auth_repository.dart';
 // Screens imports
 import '../features/auth/presentation/auth_screen.dart';
 import '../features/auth/presentation/partner_apply_screen.dart';
+import '../features/search/presentation/search_overlay.dart';
 import '../features/home/presentation/home_screen.dart';
 import '../features/offers/presentation/offer_list_screen.dart';
 import '../features/offers/presentation/offer_detail_screen.dart';
@@ -44,44 +46,57 @@ import '../features/admin/presentation/cruds/audit_logs_screen.dart';
 import '../features/home/presentation/public_layout.dart';
 import '../features/admin/presentation/dashboard/admin_layout.dart';
 
+class RouterNotifier extends ChangeNotifier {
+  final Ref _ref;
+
+  RouterNotifier(this._ref) {
+    _ref.listen<AuthState>(
+      authProvider,
+      (previous, next) => notifyListeners(),
+    );
+  }
+
+  String? redirect(BuildContext context, GoRouterState state) {
+    final authState = _ref.read(authProvider);
+    final isLoggedIn = authState.isLoggedIn;
+    final isAdminLoggedIn = authState.isAdminLoggedIn;
+
+    // 1. Route protection: Admin pages
+    if (state.matchedLocation.startsWith('/admin') && state.matchedLocation != '/admin/login') {
+      if (!isAdminLoggedIn) {
+        return '/login?admin=true&returnUrl=${Uri.encodeComponent(state.matchedLocation)}';
+      }
+      return null;
+    }
+
+    // 2. Protected customer pages
+    final protectedCustomerPaths = [
+      '/saved-offers',
+      '/followed-stores',
+      '/notifications',
+    ];
+
+    final isProtectedCustomerPath = protectedCustomerPaths.any((path) => state.matchedLocation.startsWith(path));
+
+    if (isProtectedCustomerPath && !isLoggedIn) {
+      return '/login?returnUrl=${Uri.encodeComponent(state.matchedLocation)}';
+    }
+
+    return null;
+  }
+}
+
+final routerNotifierProvider = Provider<RouterNotifier>((ref) {
+  return RouterNotifier(ref);
+});
+
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authProvider);
+  final notifier = ref.watch(routerNotifierProvider);
 
   return GoRouter(
     initialLocation: '/',
-    redirect: (context, state) {
-      final isLoggedIn = authState.isLoggedIn;
-      final isAdminLoggedIn = authState.isAdminLoggedIn;
-      final isGoingToLogin = state.matchedLocation == '/login' || state.matchedLocation == '/register';
-
-      // 1. Route protection: Admin pages
-      if (state.matchedLocation.startsWith('/admin')) {
-        if (!isAdminLoggedIn) {
-          return '/login?admin=true&returnUrl=${Uri.encodeComponent(state.matchedLocation)}';
-        }
-        return null;
-      }
-
-      // 2. Protected customer pages
-      final protectedCustomerPaths = [
-        '/saved-offers',
-        '/followed-stores',
-        '/notifications',
-      ];
-
-      final isProtectedCustomerPath = protectedCustomerPaths.any((path) => state.matchedLocation.startsWith(path));
-
-      if (isProtectedCustomerPath && !isLoggedIn) {
-        return '/login?returnUrl=${Uri.encodeComponent(state.matchedLocation)}';
-      }
-
-      // 3. Prevent logged in user from going back to login screen
-      if (isGoingToLogin && isLoggedIn) {
-        return '/';
-      }
-
-      return null;
-    },
+    refreshListenable: notifier,
+    redirect: notifier.redirect,
     routes: [
       // Public / Customer Shell Route inside PublicLayout
       ShellRoute(
@@ -124,6 +139,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/partner-with-us',
             builder: (context, state) => const PartnerApplyScreen(),
+          ),
+          GoRoute(
+            path: '/search',
+            builder: (context, state) => SearchOverlayModal(
+              initialQuery: state.uri.queryParameters['q'] ?? state.uri.queryParameters['search'] ?? '',
+            ),
           ),
           GoRoute(
             path: '/',
