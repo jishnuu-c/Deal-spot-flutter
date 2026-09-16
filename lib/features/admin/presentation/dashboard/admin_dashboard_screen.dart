@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 import '../../../../models/models.dart';
 import '../../../../core/services/auth_repository.dart';
 import '../../../../core/services/store_repository.dart';
@@ -124,6 +125,10 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
       final couponNotifier = ref.read(couponRepositoryProvider.notifier);
       await couponNotifier.fetchCoupons();
       _totalCouponsCount = ref.read(couponRepositoryProvider).length;
+
+      // 6. Recent Audit Activities
+      final auditNotifier = ref.read(auditLogRepositoryProvider.notifier);
+      await auditNotifier.fetchRecentActivities();
     } catch (_) {}
   }
 
@@ -1362,10 +1367,13 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     required bool isDark,
     required bool isWide,
   }) {
-    final auditLogs = ref.watch(auditLogRepositoryProvider);
-    if (auditLogs.isEmpty) return const SizedBox.shrink();
+    final auditState = ref.watch(auditLogRepositoryProvider);
+    final hasActivities = auditState.recentActivities.isNotEmpty;
+    final hasLogs = auditState.logs.isNotEmpty;
 
-    final recentLogs = auditLogs.take(5).toList();
+    if (!hasActivities && !hasLogs && !auditState.isLoading) {
+      return const SizedBox.shrink();
+    }
 
     return Container(
       padding: EdgeInsets.symmetric(
@@ -1394,88 +1402,419 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.history_rounded, color: Color(0xFF2563EB), size: 22),
-                  const SizedBox(width: 8),
-                  Text(
-                    isRtl ? 'أحدث النشاطات' : 'Recent Activities',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2563EB).withValues(alpha: isDark ? 0.2 : 0.1),
+                      borderRadius: BorderRadius.circular(8),
                     ),
+                    child: const Icon(Icons.history_rounded, color: Color(0xFF2563EB), size: 20),
+                  ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isRtl ? 'سجل النشاطات الحديثة' : 'Recent Audit Activities',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                        ),
+                      ),
+                      Text(
+                        isRtl ? 'آخر العمليات والتغييرات المنفذة على المنصة' : 'Latest administrative changes and operations',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
               InkWell(
                 onTap: () => context.go('/admin/audit-logs'),
-                borderRadius: BorderRadius.circular(6),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  child: Text(
-                    isRtl ? 'عرض الكل' : 'View All',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF2563EB),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2563EB).withValues(alpha: isDark ? 0.15 : 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: const Color(0xFF2563EB).withValues(alpha: 0.2),
                     ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        isRtl ? 'عرض الكل' : 'View All',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF2563EB),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        isRtl ? Icons.arrow_back_ios_new_rounded : Icons.arrow_forward_ios_rounded,
+                        size: 11,
+                        color: const Color(0xFF2563EB),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: recentLogs.length,
-            separatorBuilder: (_, __) => Divider(
-              color: isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
-              height: 16,
-            ),
-            itemBuilder: (context, index) {
-              final item = recentLogs[index];
-              return Row(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF2563EB).withValues(alpha: isDark ? 0.2 : 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(Icons.bolt_rounded, size: 18, color: Color(0xFF2563EB)),
+          const SizedBox(height: 18),
+          if (auditState.isLoading && !hasActivities && !hasLogs)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            )
+          else if (hasActivities)
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: auditState.recentActivities.length > 5 ? 5 : auditState.recentActivities.length,
+              separatorBuilder: (_, __) => Divider(
+                color: isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
+                height: 20,
+              ),
+              itemBuilder: (context, index) {
+                final item = auditState.recentActivities[index];
+                return _buildRecentActivityRow(item, isRtl, isDark);
+              },
+            )
+          else if (hasLogs)
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: auditState.logs.length > 5 ? 5 : auditState.logs.length,
+              separatorBuilder: (_, __) => Divider(
+                color: isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
+                height: 20,
+              ),
+              itemBuilder: (context, index) {
+                final log = auditState.logs[index];
+                return _buildAuditLogRow(log, isRtl, isDark);
+              },
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Center(
+                child: Text(
+                  isRtl ? 'لا توجد نشاطات مسجلة حالياً' : 'No recent activities recorded yet',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${item.action} on ${item.entityType} #${item.entityId}',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: isDark ? Colors.white : const Color(0xFF0F172A),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecentActivityRow(RecentActivity item, bool isRtl, bool isDark) {
+    final act = (item.action ?? '').toUpperCase();
+    final Color badgeColor;
+    final IconData badgeIcon;
+
+    if (act == 'CREATE') {
+      badgeColor = const Color(0xFF10B981);
+      badgeIcon = Icons.add_circle_outline_rounded;
+    } else if (act == 'UPDATE') {
+      badgeColor = const Color(0xFF3B82F6);
+      badgeIcon = Icons.edit_note_rounded;
+    } else if (act == 'DELETE') {
+      badgeColor = const Color(0xFFEF4444);
+      badgeIcon = Icons.delete_outline_rounded;
+    } else if (act == 'APPROVE') {
+      badgeColor = const Color(0xFF0D9488);
+      badgeIcon = Icons.check_circle_outline_rounded;
+    } else if (act == 'REJECT') {
+      badgeColor = const Color(0xFFF59E0B);
+      badgeIcon = Icons.highlight_off_rounded;
+    } else {
+      badgeColor = const Color(0xFF6366F1);
+      badgeIcon = Icons.bolt_rounded;
+    }
+
+    String formattedDate = '';
+    if (item.timestamp != null) {
+      try {
+        final parsed = DateTime.parse(item.timestamp!);
+        formattedDate = DateFormat('MMM dd, yyyy • hh:mm a').format(parsed);
+      } catch (_) {
+        formattedDate = item.timestamp!;
+      }
+    }
+
+    return InkWell(
+      onTap: () => context.go('/admin/audit-logs'),
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: badgeColor.withValues(alpha: isDark ? 0.2 : 0.1),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: badgeColor.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Icon(badgeIcon, size: 20, color: badgeColor),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: badgeColor.withValues(alpha: isDark ? 0.2 : 0.1),
+                          borderRadius: BorderRadius.circular(4),
                         ),
-                        const SizedBox(height: 2),
+                        child: Text(
+                          item.action ?? 'ACTIVITY',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: badgeColor,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      if (item.entityType != null && item.entityType!.isNotEmpty) ...[
                         Text(
-                          'User #${item.performedBy} • ${item.createdAt}',
+                          item.entityType!,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF334155),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    item.description ?? item.message ?? item.title ?? '${item.action ?? "Activity"} on ${item.entityType ?? "item"}',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      if (item.performedBy != null && item.performedBy!.isNotEmpty) ...[
+                        Icon(
+                          Icons.person_outline_rounded,
+                          size: 12,
+                          color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          item.performedBy!,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      if (formattedDate.isNotEmpty) ...[
+                        Icon(
+                          Icons.access_time_rounded,
+                          size: 12,
+                          color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          formattedDate,
                           style: TextStyle(
                             fontSize: 11,
                             color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                           ),
                         ),
                       ],
-                    ),
+                    ],
                   ),
                 ],
-              );
-            },
-          ),
-        ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAuditLogRow(AuditLog item, bool isRtl, bool isDark) {
+    final act = item.action.toUpperCase();
+    final Color badgeColor;
+    final IconData badgeIcon;
+
+    if (act == 'CREATE') {
+      badgeColor = const Color(0xFF10B981);
+      badgeIcon = Icons.add_circle_outline_rounded;
+    } else if (act == 'UPDATE') {
+      badgeColor = const Color(0xFF3B82F6);
+      badgeIcon = Icons.edit_note_rounded;
+    } else if (act == 'DELETE') {
+      badgeColor = const Color(0xFFEF4444);
+      badgeIcon = Icons.delete_outline_rounded;
+    } else if (act == 'APPROVE') {
+      badgeColor = const Color(0xFF0D9488);
+      badgeIcon = Icons.check_circle_outline_rounded;
+    } else if (act == 'REJECT') {
+      badgeColor = const Color(0xFFF59E0B);
+      badgeIcon = Icons.highlight_off_rounded;
+    } else {
+      badgeColor = const Color(0xFF6366F1);
+      badgeIcon = Icons.bolt_rounded;
+    }
+
+    String formattedDate = '';
+    if (item.createdAt.isNotEmpty) {
+      try {
+        final parsed = DateTime.parse(item.createdAt);
+        formattedDate = DateFormat('MMM dd, yyyy • hh:mm a').format(parsed);
+      } catch (_) {
+        formattedDate = item.createdAt;
+      }
+    }
+
+    final userLabel = item.performedBy != null
+        ? '${item.performedBy!.fullName} (${item.performedBy!.role})'
+        : (item.performedById != null ? 'User #${item.performedById}' : 'System');
+
+    return InkWell(
+      onTap: () => context.go('/admin/audit-logs'),
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: badgeColor.withValues(alpha: isDark ? 0.2 : 0.1),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: badgeColor.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Icon(badgeIcon, size: 20, color: badgeColor),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: badgeColor.withValues(alpha: isDark ? 0.2 : 0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          item.action,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: badgeColor,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '${item.entityType}${item.entityId != null ? ' #${item.entityId}' : ''}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF334155),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    '${item.action} performed on ${item.entityType}',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.person_outline_rounded,
+                        size: 12,
+                        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        userLabel,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                        ),
+                      ),
+                      if (formattedDate.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        Icon(
+                          Icons.access_time_rounded,
+                          size: 12,
+                          color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          formattedDate,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

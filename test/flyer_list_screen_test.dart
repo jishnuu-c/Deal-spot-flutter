@@ -99,7 +99,7 @@ void main() {
       coverImageUrl: '',
       totalPages: 8,
       validFrom: '2026-09-01',
-      validUntil: '2026-09-15',
+      validUntil: '2026-12-31',
       isActive: 1,
       viewCount: 250,
       store: sampleStores[0],

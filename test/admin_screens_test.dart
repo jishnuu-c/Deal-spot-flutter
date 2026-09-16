@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dealspot_flutter/features/admin/presentation/cruds/stores_crud_screen.dart';
 import 'package:dealspot_flutter/features/admin/presentation/cruds/branches_crud_screen.dart';
+import 'package:dealspot_flutter/features/admin/presentation/cruds/audit_logs_screen.dart';
 
 void main() {
   testWidgets('Test StoresCrudScreen', (WidgetTester tester) async {
@@ -46,4 +47,26 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     expect(find.byType(BranchesCrudScreen), findsOneWidget);
   });
+
+  testWidgets('Test AuditLogsScreen', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1200, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: MaterialApp(
+          home: Scaffold(
+            body: AuditLogsScreen(),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byType(AuditLogsScreen), findsOneWidget);
+  });
 }
+

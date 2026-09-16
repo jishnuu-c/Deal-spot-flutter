@@ -7,10 +7,29 @@ class ApiClient {
   final Dio dio;
   final StorageService _storageService;
 
+  static String get cleanBaseUrl {
+    var url = AppConfig.baseUrl.trim();
+    if (!url.endsWith('/')) {
+      url += '/';
+    }
+    return url;
+  }
+
+  static String normalizePath(String path) {
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return path;
+    }
+    var p = path.trim();
+    while (p.startsWith('/')) {
+      p = p.substring(1);
+    }
+    return p;
+  }
+
   ApiClient(this._storageService)
       : dio = Dio(
           BaseOptions(
-            baseUrl: AppConfig.baseUrl,
+            baseUrl: cleanBaseUrl,
             connectTimeout: const Duration(seconds: 20),
             receiveTimeout: const Duration(seconds: 20),
             headers: {
@@ -45,7 +64,7 @@ class ApiClient {
     Map<String, dynamic>? queryParameters,
     Options? options,
   }) {
-    return dio.get<T>(path, queryParameters: queryParameters, options: options);
+    return dio.get<T>(normalizePath(path), queryParameters: queryParameters, options: options);
   }
 
   Future<Response<T>> post<T>(
@@ -54,7 +73,7 @@ class ApiClient {
     Map<String, dynamic>? queryParameters,
     Options? options,
   }) {
-    return dio.post<T>(path, data: data, queryParameters: queryParameters, options: options);
+    return dio.post<T>(normalizePath(path), data: data, queryParameters: queryParameters, options: options);
   }
 
   Future<Response<T>> put<T>(
@@ -63,7 +82,7 @@ class ApiClient {
     Map<String, dynamic>? queryParameters,
     Options? options,
   }) {
-    return dio.put<T>(path, data: data, queryParameters: queryParameters, options: options);
+    return dio.put<T>(normalizePath(path), data: data, queryParameters: queryParameters, options: options);
   }
 
   Future<Response<T>> patch<T>(
@@ -72,7 +91,7 @@ class ApiClient {
     Map<String, dynamic>? queryParameters,
     Options? options,
   }) {
-    return dio.patch<T>(path, data: data, queryParameters: queryParameters, options: options);
+    return dio.patch<T>(normalizePath(path), data: data, queryParameters: queryParameters, options: options);
   }
 
   Future<Response<T>> delete<T>(
@@ -81,7 +100,7 @@ class ApiClient {
     Map<String, dynamic>? queryParameters,
     Options? options,
   }) {
-    return dio.delete<T>(path, data: data, queryParameters: queryParameters, options: options);
+    return dio.delete<T>(normalizePath(path), data: data, queryParameters: queryParameters, options: options);
   }
 }
 
